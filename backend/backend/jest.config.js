@@ -2,12 +2,15 @@
 module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/tests/**/*.test.js'],
-  setupFilesAfterFramework: [],
   globalSetup:    undefined,
   globalTeardown: undefined,
-  setupFilesAfterFramework: [],
-  // Each test file gets its own setup
-  setupFiles: ['./tests/setup.js'],
+  // IMPORTANT: must be setupFilesAfterEnv, not setupFiles. `setupFiles` runs
+  // before Jest's test framework (describe/it/beforeAll/afterAll) is
+  // installed, so tests/setup.js's top-level beforeAll()/afterAll() calls
+  // threw "ReferenceError: beforeAll is not defined" and every suite failed
+  // to even load. setupFilesAfterEnv runs after the framework is ready.
+  // (Audit finding, see docs/audit/SECURITY_AND_PRODUCTION_GAPS.md BUG-01.)
+  setupFilesAfterEnv: ['./tests/setup.js'],
   // Run sequentially to avoid DB race conditions
   maxWorkers: 1,
   testTimeout: 30000,
@@ -19,7 +22,7 @@ module.exports = {
     'src/utils/**/*.js',
     '!src/config/**',
   ],
-  coverageThresholds: {
+  coverageThreshold: {
     global: {
       lines:      40,
       functions:  40,

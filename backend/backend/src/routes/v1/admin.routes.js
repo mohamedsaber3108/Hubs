@@ -92,24 +92,26 @@ router.put   ('/content/groups/:id',         contentCtrl.updateGroup);
 router.delete('/content/groups/:id',         contentCtrl.deleteGroup);
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
+// Reads: any authenticated admin. Writes: admin or super_admin (not moderator).
+// (Audit finding SEC-01 — see note above the /system routes.)
 router.get ('/settings',               settingsCtrl.getSettings);
-router.put ('/settings',               validate(schema.bulkUpdateSettings), settingsCtrl.bulkUpdateSettings);
+router.put ('/settings',               requireAdminRole('admin', 'super_admin'), validate(schema.bulkUpdateSettings), settingsCtrl.bulkUpdateSettings);
 router.get ('/settings/:key',          settingsCtrl.getSetting);
-router.put ('/settings/:key',          validate(schema.updateSetting), settingsCtrl.updateSetting);
+router.put ('/settings/:key',          requireAdminRole('admin', 'super_admin'), validate(schema.updateSetting), settingsCtrl.updateSetting);
 
 // Feature Flags
 router.get   ('/flags',                settingsCtrl.getFeatureFlags);
 router.get   ('/flags/:name',          settingsCtrl.getFeatureFlag);
-router.put   ('/flags/:name',          validate(schema.updateFeatureFlag), settingsCtrl.updateFeatureFlag);
-router.patch ('/flags/:name/toggle',   settingsCtrl.toggleFeatureFlag);
+router.put   ('/flags/:name',          requireAdminRole('admin', 'super_admin'), validate(schema.updateFeatureFlag), settingsCtrl.updateFeatureFlag);
+router.patch ('/flags/:name/toggle',   requireAdminRole('admin', 'super_admin'), settingsCtrl.toggleFeatureFlag);
 
 // Pricing Plans
 router.get('/pricing',                 settingsCtrl.getPricingPlans);
-router.put('/pricing/:id',             settingsCtrl.updatePricingPlan);
+router.put('/pricing/:id',             requireAdminRole('admin', 'super_admin'), settingsCtrl.updatePricingPlan);
 
 // Email Templates
 router.get('/email-templates',         settingsCtrl.getEmailTemplates);
-router.put('/email-templates/:name',   settingsCtrl.updateEmailTemplate);
+router.put('/email-templates/:name',   requireAdminRole('admin', 'super_admin'), settingsCtrl.updateEmailTemplate);
 
 // ─── Media ────────────────────────────────────────────────────────────────────
 router.get   ('/media',                mediaCtrl.listMedia);
@@ -133,14 +135,20 @@ router.get('/logs/export',   logsCtrl.exportLogs);
 router.get('/logs/:id',      logsCtrl.getLog);
 
 // ─── System ───────────────────────────────────────────────────────────────────
+// Read-only health/status checks: any authenticated admin (incl. moderator).
 router.get   ('/system/health',       systemCtrl.getSystemHealth);
 router.get   ('/system/queues',       systemCtrl.getQueueStats);
-router.post  ('/system/queues/:queue/pause',  systemCtrl.pauseQueue);
-router.post  ('/system/queues/:queue/resume', systemCtrl.resumeQueue);
-router.post  ('/system/queues/:queue/clean',  systemCtrl.cleanQueue);
 router.get   ('/system/cache',        systemCtrl.getCacheStats);
-router.delete('/system/cache',        systemCtrl.flushCache);
 router.get   ('/system/maintenance',  systemCtrl.getMaintenanceStatus);
-router.put   ('/system/maintenance',  systemCtrl.setMaintenanceMode);
+// Destructive/infrastructure-affecting actions: super_admin only.
+// (Audit finding SEC-01 — requireAdminRole was imported but never applied
+// anywhere in this file, so any admin role including `moderator` could
+// pause/resume/clean job queues, flush the entire Redis cache, or toggle
+// site-wide maintenance mode. See docs/audit/SECURITY_AND_PRODUCTION_GAPS.md.)
+router.post  ('/system/queues/:queue/pause',  requireAdminRole('super_admin'), systemCtrl.pauseQueue);
+router.post  ('/system/queues/:queue/resume', requireAdminRole('super_admin'), systemCtrl.resumeQueue);
+router.post  ('/system/queues/:queue/clean',  requireAdminRole('super_admin'), systemCtrl.cleanQueue);
+router.delete('/system/cache',        requireAdminRole('super_admin'), systemCtrl.flushCache);
+router.put   ('/system/maintenance',  requireAdminRole('super_admin'), systemCtrl.setMaintenanceMode);
 
 module.exports = router;
