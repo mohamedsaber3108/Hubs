@@ -60,8 +60,16 @@ describe('Security — JWT', () => {
     expect(() => verifyToken(tampered, process.env.JWT_ACCESS_SECRET)).toThrow();
   });
 
-  it('throws on wrong secret', () => {
-    const t = generateAccessToken(payload);
-    expect(() => verifyToken(t, 'wrong_secret_entirely')).toThrow();
+  it('throws when verifying a token signed with a different secret', () => {
+    // verifyToken (= verifyAccessToken) intentionally always verifies
+    // against process.env.JWT_ACCESS_SECRET and takes no secret
+    // parameter -- letting a caller supply an arbitrary verification
+    // secret would be a key-confusion vulnerability. So to prove
+    // mismatched-secret tokens are rejected, sign with a different
+    // secret directly via jsonwebtoken, not via a (nonexistent) second
+    // argument to verifyToken.
+    const jwt = require('jsonwebtoken');
+    const foreignToken = jwt.sign(payload, 'a_completely_different_secret_value', { expiresIn: '15m' });
+    expect(() => verifyToken(foreignToken, process.env.JWT_ACCESS_SECRET)).toThrow();
   });
 });

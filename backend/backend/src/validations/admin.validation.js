@@ -1,14 +1,18 @@
 'use strict';
 const Joi = require('joi');
 
+// BUG-02: see src/validations/auth.validation.js -- Joi's default
+// .email() TLD allowlist rejects valid addresses like "@usam.hub".
+const emailSchema = () => Joi.string().email({ tlds: { allow: false } });
+
 const adminLogin = Joi.object({
-  email:    Joi.string().email().lowercase().required(),
+  email:    emailSchema().lowercase().required(),
   password: Joi.string().required(),
   totp_code: Joi.string().length(6).pattern(/^\d{6}$/).optional(),
 });
 
 const createAdmin = Joi.object({
-  email:    Joi.string().email().lowercase().required(),
+  email:    emailSchema().lowercase().required(),
   password: Joi.string().min(10).max(128)
     .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/)
     .required()
@@ -29,7 +33,7 @@ const updateUserAdmin = Joi.object({
   first_name: Joi.string().trim().min(2).max(100),
   last_name:  Joi.string().trim().min(2).max(100),
   username:   Joi.string().trim().alphanum().min(3).max(50),
-  email:      Joi.string().email().lowercase(),
+  email:      emailSchema().lowercase(),
   role:       Joi.string().valid('user','moderator','admin'),
   status:     Joi.string().valid('active','suspended','banned'),
   headline:   Joi.string().max(255).allow('', null),

@@ -4,7 +4,13 @@ class ApiResponse {
   constructor(statusCode, data, message = 'Success', meta = null) {
     this.statusCode = statusCode;
     this.success = statusCode < 400;
-    this.data = data;
+    // Default to null, not undefined. JSON.stringify() drops undefined
+    // object properties entirely, so passing no data previously made the
+    // "data" key vanish from the JSON response instead of serializing as
+    // `"data": null` -- a silent API contract inconsistency for any
+    // caller that checks response.data === null. (Found via unit test
+    // tests/unit/apiResponse.test.js during Jest unit/integration split.)
+    this.data = data === undefined ? null : data;
     this.message = message;
     if (meta) this.meta = meta;
   }
