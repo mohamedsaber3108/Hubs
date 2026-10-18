@@ -11,9 +11,12 @@ describe('Search API', () => {
   });
 
   describe('GET /api/v1/search', () => {
-    it('requires authentication', async () => {
+    it('works without authentication (public, like other list endpoints)', async () => {
+      // search.routes.js intentionally uses optionalAuth (same pattern
+      // as communities/resources/mentors/etc.) -- this test previously
+      // asserted a 401 that the route was never designed to return.
       const res = await request(app).get('/api/v1/search?q=test');
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(200);
     });
 
     it('returns multi-type results', async () => {

@@ -1,13 +1,17 @@
 'use strict';
 const request = require('supertest');
 const app     = require('../../src/app');
-const { createUserAndLogin } = require('../helpers');
+const { createUserAndLogin, getSeedCommunity } = require('../helpers');
 
 describe('Leaderboard API', () => {
   let token;
 
   beforeAll(async () => {
     ({ token } = await createUserAndLogin());
+    // The community filter test below needs 'freelancespace' to
+    // actually exist in this test run's (freshly sync'd) DB --
+    // every other test file that filters by community calls this too.
+    await getSeedCommunity();
   });
 
   describe('GET /api/v1/leaderboard', () => {

@@ -34,10 +34,20 @@ const globalSearch = async (req, res, next) => {
       });
     }
 
+    // BUG-08: globalSearch referenced many columns that don't exist on
+    // their models (Event.type, Event.cover_image; Group.visibility,
+    // Group.cover_image, Group.members_count; Challenge.end_date;
+    // Opportunity.location_type, Opportunity.is_featured;
+    // Resource.type, Resource.avg_rating, Resource.downloads_count),
+    // which made every search request 500. Corrected to the real
+    // columns (Event.cover_url, Event.start_date is real; Group.type,
+    // Group.cover_url, Group.member_count; Challenge.deadline;
+    // Opportunity has neither location_type nor is_featured, dropped;
+    // Resource.category, Resource.rating_avg, Resource.download_count).
     if (type === 'all' || type === 'events') {
       results.events = await Event.findAll({
         where: { [Op.or]: [{ title: like }, { description: like }] },
-        attributes: ['id','title','type','start_date','attendees_count','cover_image'],
+        attributes: ['id','title','start_date','attendees_count','cover_url'],
         include: [{ model: Community, as: 'community', attributes: ['id','slug','name','emoji'] }],
         limit: maxLimit,
         order: [['start_date','ASC']],
@@ -46,8 +56,8 @@ const globalSearch = async (req, res, next) => {
 
     if (type === 'all' || type === 'groups') {
       results.groups = await Group.findAll({
-        where: { visibility: { [Op.ne]: 'private' }, [Op.or]: [{ name: like }, { description: like }] },
-        attributes: ['id','name','cover_image','members_count','visibility'],
+        where: { type: { [Op.ne]: 'private' }, [Op.or]: [{ name: like }, { description: like }] },
+        attributes: ['id','name','cover_url','member_count','type'],
         include: [{ model: Community, as: 'community', attributes: ['id','slug','name','emoji'] }],
         limit: maxLimit,
       });
@@ -55,8 +65,8 @@ const globalSearch = async (req, res, next) => {
 
     if (type === 'all' || type === 'challenges') {
       results.challenges = await Challenge.findAll({
-        where: { status: { [Op.in]: ['open','voting'] }, [Op.or]: [{ title: like }, { description: like }] },
-        attributes: ['id','title','type','status','end_date','prizes'],
+        where: { status: { [Op.in]: ['active','upcoming'] }, [Op.or]: [{ title: like }, { description: like }] },
+        attributes: ['id','title','type','status','deadline','prizes'],
         limit: maxLimit,
       });
     }
@@ -64,18 +74,18 @@ const globalSearch = async (req, res, next) => {
     if (type === 'all' || type === 'opportunities') {
       results.opportunities = await Opportunity.findAll({
         where: { status: 'open', [Op.or]: [{ title: like }, { company: like }, { description: like }] },
-        attributes: ['id','title','type','company','location_type','is_featured'],
+        attributes: ['id','title','type','company'],
         limit: maxLimit,
-        order: [['is_featured','DESC']],
+        order: [['created_at','DESC']],
       });
     }
 
     if (type === 'all' || type === 'resources') {
       results.resources = await Resource.findAll({
         where: { is_approved: true, [Op.or]: [{ title: like }, { description: like }] },
-        attributes: ['id','title','type','avg_rating','downloads_count','is_free'],
+        attributes: ['id','title','category','rating_avg','download_count','is_free'],
         limit: maxLimit,
-        order: [['downloads_count','DESC']],
+        order: [['download_count','DESC']],
       });
     }
 

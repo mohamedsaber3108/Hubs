@@ -33,7 +33,18 @@ const listEvents = async (req, res, next) => {
     const { page, limit, offset } = paginate(req.query);
     const { community, type, status, upcoming, search } = req.query;
     const where = {};
-    if (type)   where.type   = type;
+    // BUG-11: Event has no `type` column (only `is_online` boolean) --
+    // `where.type = type` threw "Unknown column 'Event.type'" on any
+    // ?type= filter. The create schema accepts type:
+    // online/in_person/hybrid but never actually persists it (dropped
+    // silently on create, a separate gap -- see event.controller.js
+    // createEvent, not fixed here as it needs a real schema decision:
+    // either add a `type` column via migration, or keep `is_online`
+    // as the only location-mode signal and drop the unused schema
+    // field). For now, map the filter onto the real column so it at
+    // least works for the binary online/not-online case.
+    if (type === 'online')     where.is_online = true;
+    else if (type)              where.is_online = false;
     if (status) where.status = status;
     if (search) where.title  = { [Op.like]: '%' + search + '%' };
     if (upcoming === 'true') where.start_date = { [Op.gte]: new Date() };

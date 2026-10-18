@@ -24,7 +24,10 @@ const listChallenges = async (req, res, next) => {
       if (comm) where.community_id = comm.id;
     }
     const { count, rows } = await Challenge.findAndCountAll({
-      where, limit, offset, order: [['start_date','DESC']],
+      // BUG-06: `start_date` was never a real column on Challenge (no
+      // model field, no migration) -- caused GET /challenges to 500 on
+      // its happy path. Sort on a real column instead.
+      where, limit, offset, order: [['created_at','DESC']],
       include: [
         { model: Community, as: 'community', attributes: ['id','slug','name','emoji'] },
         { model: User, as: 'creator', attributes: userAttrs },

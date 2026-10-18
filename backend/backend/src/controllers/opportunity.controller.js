@@ -41,7 +41,11 @@ const listOpportunities = async (req, res, next) => {
 
     const { count, rows } = await Opportunity.findAndCountAll({
       where, limit, offset,
-      order: [['is_featured','DESC'],['created_at','DESC']],
+      // BUG-03: `is_featured` was never a real column (no model field,
+      // no migration) -- every call to GET /opportunities threw
+      // "Unknown column 'Opportunity.is_featured' in 'order clause'",
+      // a 500 on the endpoint's happy path. Sort on real columns only.
+      order: [['created_at','DESC']],
       include: [
         { model: Community, as: 'community', attributes: ['id','slug','name','emoji'] },
         { model: User, as: 'poster', attributes: userAttrs },
@@ -68,7 +72,10 @@ const getOpportunity = async (req, res, next) => {
       ],
     });
     if (!opp) return next(ApiError.notFound('Opportunity not found'));
-    await Opportunity.increment('views_count', { where: { id: opp.id } });
+    // BUG-13: `views_count` was never a real column on Opportunity (no
+    // model field, no migration) -- this threw on every single
+    // GET /opportunities/:id call. Removed; add a real column via
+    // migration later if view tracking is wanted.
     let applied = false, saved = false, application = null;
     if (req.user) {
       [application, saved] = await Promise.all([

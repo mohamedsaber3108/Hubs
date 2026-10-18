@@ -91,13 +91,19 @@ const getCharts = async (req, res, next) => {
     });
 
     // Members per community
+    // BUG-10: grouping by the literal string 'Community.id' only works
+    // if Sequelize's generated SQL alias matches exactly, which it
+    // didn't here (it alias-prefixes included models differently),
+    // producing "Unknown column 'Community.id' in 'group statement'"
+    // on every GET /admin/dashboard/charts call. Group by the include's
+    // actual column path instead.
     const communityStats = await CommunityMembership.findAll({
       attributes: [
         'community_id',
         [fn('COUNT', col('user_id')), 'members'],
       ],
       include: [{ model: Community, as: 'community', attributes: ['name','emoji','slug'] }],
-      group: ['community_id', 'Community.id'],
+      group: ['community_id', 'community.id', 'community.name', 'community.emoji', 'community.slug'],
       raw: false,
     });
 

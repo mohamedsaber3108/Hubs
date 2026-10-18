@@ -5,9 +5,11 @@ const { authenticate, optionalAuth } = require('../../middleware/auth');
 const upload = require('../../middleware/upload');
 const { uploadLimiter, cacheMiddleware: _ } = require('../../middleware/rateLimiter');
 const { cacheMiddleware } = require('../../middleware/cache');
+const validate = require('../../middleware/validate');
+const schema   = require('../../validations/content.validation');
 
 router.get('/',                                  optionalAuth, cacheMiddleware(30), ctrl.listChallenges);
-router.post('/',                                 authenticate, upload.single('cover_image', 'image'), ctrl.createChallenge);
+router.post('/',                                 authenticate, upload.single('cover_image', 'image'), validate(schema.createChallenge), ctrl.createChallenge);
 router.get('/:id',                               optionalAuth, ctrl.getChallenge);
 router.put('/:id',                               authenticate, ctrl.updateChallenge);
 router.post('/:id/submit',                       authenticate, upload.array('media', 5), ctrl.submitEntry);

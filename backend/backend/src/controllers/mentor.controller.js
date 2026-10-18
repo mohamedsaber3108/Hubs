@@ -30,10 +30,17 @@ const listMentors = async (req, res, next) => {
       if (comm) where.community_id = comm.id;
     }
     const { count, rows } = await Mentor.findAndCountAll({
-      where, limit, offset, order: [['rating','DESC'],['sessions_count','DESC']],
+      // BUG-04: two real columns/associations that don't exist --
+      // 'rating' (the actual column is `rating_avg`) and a
+      // Mentor->Community Sequelize association (Mentor only has a
+      // loose `communities` JSON field, no real FK/association is
+      // defined in models/index.js). Both caused GET /mentors to 500
+      // on its happy path. Sort on real columns; drop the impossible
+      // eager-load (community filtering above still works via the
+      // plain `where.community_id` lookup).
+      where, limit, offset, order: [['rating_avg','DESC'],['sessions_count','DESC']],
       include: [
         { model: User, as: 'user', attributes: userAttrs },
-        { model: Community, as: 'community', attributes: ['id','slug','name','emoji'] },
       ],
     });
     return ApiResponse.paginated(res, rows, { page, limit, total: count });
@@ -44,9 +51,9 @@ const listMentors = async (req, res, next) => {
 const getMentor = async (req, res, next) => {
   try {
     const mentor = await Mentor.findByPk(req.params.id, {
+      // BUG-04: no Mentor->Community association exists, see note above.
       include: [
         { model: User, as: 'user', attributes: userAttrs },
-        { model: Community, as: 'community', attributes: ['id','slug','name','emoji'] },
       ],
     });
     if (!mentor || !mentor.is_approved) return next(ApiError.notFound('Mentor not found'));
@@ -63,9 +70,20 @@ const becomeMentor = async (req, res, next) => {
   try {
     const existing = await Mentor.findOne({ where: { user_id: req.user.id } });
     if (existing) return next(ApiError.conflict('You already have a mentor profile'));
-    const community = await Community.findOne({ where: { slug: req.body.community_slug } });
-    if (!community) return next(ApiError.notFound('Community not found'));
-    const mentor = await Mentor.create({ ...req.body, user_id: req.user.id, community_id: community.id, is_approved: false });
+    // BUG-14b: Mentor.community_id is nullable (a mentor can register
+    // without picking a single community -- see models/Mentor.js), but
+    // this unconditionally called Community.findOne({ where: { slug:
+    // req.body.community_slug }}) even when community_slug was never
+    // sent, hitting the same "WHERE parameter slug has invalid
+    // undefined value" 500 as the other create* bugs. Only look it up
+    // when actually provided.
+    let community_id = null;
+    if (req.body.community_slug) {
+      const community = await Community.findOne({ where: { slug: req.body.community_slug } });
+      if (!community) return next(ApiError.notFound('Community not found'));
+      community_id = community.id;
+    }
+    const mentor = await Mentor.create({ ...req.body, user_id: req.user.id, community_id, is_approved: false });
     return ApiResponse.created(res, { mentor }, 'Mentor application submitted for review');
   } catch (err) { next(err); }
 };

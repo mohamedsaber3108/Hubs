@@ -4,9 +4,11 @@ const ctrl   = require('../../controllers/opportunity.controller');
 const { authenticate, optionalAuth } = require('../../middleware/auth');
 const upload = require('../../middleware/upload');
 const { cacheMiddleware } = require('../../middleware/cache');
+const validate = require('../../middleware/validate');
+const schema   = require('../../validations/content.validation');
 
 router.get('/',                           optionalAuth, cacheMiddleware(30), ctrl.listOpportunities);
-router.post('/',                          authenticate, ctrl.createOpportunity);
+router.post('/',                          authenticate, validate(schema.createOpportunity), ctrl.createOpportunity);
 router.get('/:id',                        optionalAuth, ctrl.getOpportunity);
 router.put('/:id',                        authenticate, ctrl.updateOpportunity);
 router.delete('/:id',                     authenticate, ctrl.deleteOpportunity);

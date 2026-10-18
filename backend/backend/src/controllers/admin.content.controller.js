@@ -99,7 +99,9 @@ const deleteComment = async (req, res, next) => {
 // ─── Communities ──────────────────────────────────────────────────────────────
 const listCommunities = async (req, res, next) => {
   try {
-    const communities = await Community.findAll({ order: [['sort_order','ASC'],['id','ASC']] });
+    // BUG-07b: same `sort_order` mistake as community.controller.js
+    // getAll -- Community has no such column.
+    const communities = await Community.findAll({ order: [['id','ASC']] });
     return ApiResponse.success(res, { communities });
   } catch (err) { next(err); }
 };

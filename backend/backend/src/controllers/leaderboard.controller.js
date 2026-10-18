@@ -1,6 +1,6 @@
 'use strict';
 const { Op } = require('sequelize');
-const { User, LeaderboardPoint, Community, CommunityMembership } = require('../models');
+const { User, LeaderboardPoint, PointTransaction, Community, CommunityMembership } = require('../models');
 const { cacheMiddleware } = require('../middleware/cache');
 const ApiError    = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
@@ -76,9 +76,14 @@ const getMyStats = async (req, res, next) => {
     const where = { user_id: req.user.id };
     if (since) where.created_at = { [Op.gte]: since };
 
+    // BUG-15: `action` is a real column on PointTransaction, not on
+    // LeaderboardPoint (which only has points/rank/period_month/
+    // period_year) -- caused GET /leaderboard/me to 500 on its happy
+    // path. The per-action breakdown belongs on the PointTransaction
+    // log; keep the point *total* sum on LeaderboardPoint as before.
     const [points, byAction, rank] = await Promise.all([
       LeaderboardPoint.sum('points', { where }) || 0,
-      LeaderboardPoint.findAll({
+      PointTransaction.findAll({
         attributes: ['action', [fn('SUM', col('points')), 'total']],
         where, group: ['action'], order: [[fn('SUM', col('points')), 'DESC']], raw: true,
       }),

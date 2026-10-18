@@ -4,9 +4,11 @@ const ctrl   = require('../../controllers/resource.controller');
 const { authenticate, optionalAuth } = require('../../middleware/auth');
 const upload = require('../../middleware/upload');
 const { cacheMiddleware } = require('../../middleware/cache');
+const validate = require('../../middleware/validate');
+const schema   = require('../../validations/content.validation');
 
 router.get('/',            optionalAuth, cacheMiddleware(60), ctrl.listResources);
-router.post('/',           authenticate, upload.single('file'), ctrl.createResource);
+router.post('/',           authenticate, upload.single('file'), validate(schema.createResource), ctrl.createResource);
 router.get('/:id',         optionalAuth, ctrl.getResource);
 router.put('/:id',         authenticate, ctrl.updateResource);
 router.delete('/:id',      authenticate, ctrl.deleteResource);

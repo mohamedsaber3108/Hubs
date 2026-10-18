@@ -15,7 +15,12 @@ describe('Communities API', () => {
     it('returns community list publicly', async () => {
       const res = await request(app).get('/api/v1/communities');
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body.data)).toBe(true);
+      // community.controller.js getAll responds with
+      // `{ data: { communities: [...] } }` (matches the frontend's
+      // actual call, frontend/src/services/community.service.ts:5),
+      // not a bare array under `data` -- this test previously asserted
+      // the wrong shape.
+      expect(Array.isArray(res.body.data.communities)).toBe(true);
     });
 
     it('returns communities with member_count field', async () => {

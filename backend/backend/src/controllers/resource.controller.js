@@ -14,7 +14,13 @@ const listResources = async (req, res, next) => {
     const { page, limit, offset } = paginate(req.query);
     const { community, type, search, is_free } = req.query;
     const where = { is_approved: true };
-    if (type) where.type = type;
+    // BUG-12: Resource's real column is `category` (template/guide/
+    // tool/calculator/case-study/toolkit/other), not `type` -- the
+    // `?type=` query param name is also the controller's request-param
+    // naming (kept for API-contract stability), mapped onto the real
+    // column. `where.type = type` threw "Unknown column
+    // 'Resource.type'" on any ?type= filter.
+    if (type) where.category = type;
     if (is_free !== undefined) where.is_free = is_free === 'true';
     if (search) {
       where[Op.or] = [
@@ -28,7 +34,10 @@ const listResources = async (req, res, next) => {
       if (comm) where.community_id = comm.id;
     }
     const { count, rows } = await Resource.findAndCountAll({
-      where, limit, offset, order: [['downloads_count','DESC'],['created_at','DESC']],
+      // BUG-05: real column is `download_count` (singular "download",
+      // no "s"), not `downloads_count` -- caused GET /resources to 500
+      // on its happy path.
+      where, limit, offset, order: [['download_count','DESC'],['created_at','DESC']],
       include: [
         { model: Community, as: 'community', attributes: ['id','slug','name','emoji'] },
         { model: User, as: 'uploader', attributes: userAttrs },

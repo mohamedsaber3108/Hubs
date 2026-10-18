@@ -5,7 +5,9 @@ const ApiResponse = require('../utils/ApiResponse');
 
 const getAll = async (req, res, next) => {
   try {
-    const communities = await Community.findAll({ where: { is_active: true }, order: [['sort_order', 'ASC'], ['id', 'ASC']] });
+    // BUG-07: `sort_order` is a real column on PricingPlan, not on
+    // Community -- caused GET /communities to 500 on its happy path.
+    const communities = await Community.findAll({ where: { is_active: true }, order: [['id', 'ASC']] });
     return ApiResponse.success(res, { communities });
   } catch (err) { next(err); }
 };

@@ -77,6 +77,15 @@ Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 User.hasMany(ActivityLog, { foreignKey: 'user_id', as: 'activityLogs' });
 ActivityLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// Admin ↔ ActivityLog (BUG-09: ActivityLog has a real admin_id column
+// from its migration, but no association was ever defined for it,
+// even though admin.logs.controller.js eager-loads
+// `{ model: Admin, as: 'admin' }` -- that threw
+// "Admin is not associated to ActivityLog!" on every GET /admin/logs
+// call. Purely additive: no migration needed, admin_id already exists.)
+Admin.hasMany(ActivityLog, { foreignKey: 'admin_id', as: 'activityLogs' });
+ActivityLog.belongsTo(Admin, { foreignKey: 'admin_id', as: 'admin' });
+
 // Community ↔ Members (through CommunityMembership)
 Community.belongsToMany(User, { through: CommunityMembership, foreignKey: 'community_id', as: 'members' });
 User.belongsToMany(Community, { through: CommunityMembership, foreignKey: 'user_id', as: 'communities' });
