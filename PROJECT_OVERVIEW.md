@@ -160,6 +160,19 @@ Tests (from `backend/backend`): `npm test` (195 tests, 22 suites, all passing), 
 
 USAM Hub (this project) is one of five USAM-family products, each its own repo/stack/domain under `usamif.com`: E-USAM (`edu.usamif.com`, e-learning), USAM for Kids (`kids.usamif.com`), Noventra (`noventra.com`, study-abroad fairs — the misleadingly-named `jobs.usamif` folder), and USAMKO (`usamko.usamif.com`, B2B lead-gen). A verified read-only inspection of all five — stacks, auth systems, databases, domains, duplication, and a proposed unified SSO/shared-services architecture — is in `docs/ecosystem/ECOSYSTEM_ARCHITECTURE_AND_INTEGRATION.md`. Note: whether `hub.usamif.com` is this project's intended domain is **unverified** (its nginx still uses a placeholder); see that report §2.
 
+## 9c. Communities audit & architecture decisions
+
+A source-verified, code-level audit of the four communities (FreelanceSpace, StudentZone, HR Connect, LaunchPad) found the platform is currently **one generic community app with four cosmetic skins** — real/working social core, but no persona differentiation, no opportunity intelligence, no marketplace, and a **broken onboarding flow (HTTP 500, verified live)**. Full findings + a P0/P1/P2 plan:
+- `docs/communities/COMMUNITIES_ARCHITECTURE_AND_GAP_REPORT.md`
+- `docs/communities/COMMUNITIES_ROADMAP.md`
+
+Five architecture decisions (provider-independent, nothing deployed) are recorded as ADRs:
+- `ADR-003` — `hub.usamif.com` is a candidate domain only (no DNS/nginx change)
+- `ADR-004` — provider-independent OIDC SSO (Cognito vs Keycloak comparison, not finalized)
+- `ADR-005` — E-USAM payments is a candidate shared-billing service pending a suitability audit
+- `ADR-006` — global organization identity, product-isolated membership/data (supersedes ADR-002)
+- `ADR-007` — opportunities ownership + provider-independent USAM Jobs integration (Noventra is NOT Jobs)
+
 ## 10. Full audit trail
 
 A deeper, evidence-based audit was performed on `audit/baseline-verification` branch (Oct 2026) per a master development prompt. See:

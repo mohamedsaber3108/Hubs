@@ -1,7 +1,7 @@
-# ADR-002: Multi-Tenancy Model — DRAFT, NOT DECIDED
+# ADR-002: Multi-Tenancy Model — SUPERSEDED by ADR-006
 
 ## Status
-Draft — blocked on essential questions about organizational structure.
+**Superseded by `ADR-006-global-organization-tenancy.md`.** The open question this draft was blocked on ("what does tenant mean?") was answered by the user: a **global organization identity** across the ecosystem, with organization membership, permissions, and data **isolated per product**. See ADR-006 for the accepted direction. This file is kept for history; do not implement from it.
 
 ## Context
 Master prompt requires organization-aware multi-tenancy with strong data isolation, scoped roles, and tenant audit trails, while platform-level USAM admins govern the ecosystem and tenant admins stay restricted to their tenant.
