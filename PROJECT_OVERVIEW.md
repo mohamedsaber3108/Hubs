@@ -100,34 +100,41 @@ m:\HUb_comunites
 3. **Seed credential mismatch — CONFIRMED.** `backend/README.md`'s `@gmail.com` accounts match the actual seeder (`seeders/20240101000001-seed-admins.js`): `superadmin@gmail.com`/`SuperAdmin@2025!`, `admin@gmail.com`/`Admin@2025!`, `moderator@gmail.com`/`Moderator@2025!`. The `@usam.hub` references in `DEPLOY_CHECKLIST.md`/admin `PHASE_6_SUMMARY.md` are the inaccurate ones.
 4. **Nested backend path** — the real Node project is `backend/backend/`, not `backend/`. Easy to run commands in the wrong directory.
 5. **One unimplemented endpoint — CONFIRMED.** SES bounce webhook `POST /api/v1/webhooks/ses-bounce` does not exist anywhere in source (grepped `src/`, zero matches, no `/webhooks` router mounted).
-6. **Two real bugs found and fixed during the Oct 2026 baseline audit** (branch `audit/baseline-verification`): a Jest config error that broke 100% of backend tests (`setupFiles` vs `setupFilesAfterEnv`), and a missing admin-role authorization check that let any admin role (including `moderator`) flush the production Redis cache, toggle maintenance mode, and write platform settings. See `docs/audit/SECURITY_AND_PRODUCTION_GAPS.md` for full detail — the role-check fix has not yet been execution-verified against a live database.
-7. **This document previously declared "all 7 phases complete per docs."** That claim came from the docs, not from running code. The verified baseline audit found the test suite was completely non-functional (bug, not just missing DB) and found one real exploitable authorization gap — treat any remaining unverified claims in the PHASE_*_SUMMARY.md files with the same skepticism until independently confirmed. See `docs/architecture/CURRENT_STATE_VERIFIED.md` for what has actually been checked against source.
+6. **18 real bugs found and fixed across two development sessions** (branch `audit/baseline-verification`, all execution-verified against a real local MySQL+Redis via `docker-compose.dev.yml`): a Jest config error that broke 100% of backend tests, a missing admin-role authorization check (any admin role could flush the production Redis cache / toggle maintenance mode / write platform settings), an email-validation bug that rejected the project's own `.hub`-TLD addresses, and 14 column/association/validation bugs across opportunities, mentors, resources, challenges, communities, search, admin dashboard/logs, events, and leaderboard endpoints — most of these made the endpoint's happy path return a raw 500. All fixed; full backend test suite is now 195/195 passing. See `docs/audit/SECURITY_AND_PRODUCTION_GAPS.md` and the git log for exact detail.
+7. **This document previously declared "all 7 phases complete per docs."** That claim came from the docs, not from running code. Once the integration test suite was actually executed for the first time (previously blocked on no local DB — resolved via `docs/DEV_ENVIRONMENT_SETUP.md`), it went from never-run to 120/155 passing to 155/155 after fixing the bugs above. The lesson holds: treat any remaining unverified claims in the PHASE_*_SUMMARY.md files with the same skepticism until independently confirmed. See `docs/architecture/CURRENT_STATE_VERIFIED.md` for what has actually been checked against source.
+8. **Dependency security**: 2 critical vulnerabilities fixed on each side (backend: `tar` via override; frontend: `tinypool` via override + `react-router-dom` patch bump) without `npm audit fix --force`. Remaining non-critical findings are dev-tooling major-version bumps, deferred to `docs/ROADMAP.md` Track A8 as individually-tested follow-up PRs.
 
 ## 7. Setup / run locally
 
+**Full step-by-step guide: `docs/DEV_ENVIRONMENT_SETUP.md`.** Summary:
+
 ```powershell
-# Backend — run from m:\HUb_comunites\backend\backend
-Copy-Item .env.example .env   # fill in DB_*, JWT_*, REDIS_*, AWS_*, OAuth creds, ANTHROPIC_API_KEY
+# 1. Start local MySQL + Redis via Docker Compose
+cd backend/backend
+docker compose -f docker-compose.dev.yml up -d   # MySQL on :3306, Redis on :6380 (not 6379 -- see setup doc)
+
+# 2. Backend — run from m:\HUb_comunites\backend\backend
+Copy-Item .env.example .env   # fill in DB_*, JWT_*, REDIS_PORT=6380, AWS_*, OAuth creds, ANTHROPIC_API_KEY
 npm install
-npx sequelize-cli db:migrate
-npx sequelize-cli db:seed:all
+npm run migrate
+npm run seed
 npm run dev                    # nodemon src/server.js -> http://localhost:3000, docs at /api/docs
 
-# Frontend — run from m:\HUb_comunites\frontend (separate terminal)
+# 3. Frontend — run from m:\HUb_comunites\frontend (separate terminal)
 Copy-Item .env.example .env.local
 npm install
 npm run dev                    # Vite -> http://localhost:5173
 ```
 
-Prerequisites: a running **MySQL 8** instance and a running **Redis** instance — `server.js` retries 5x with backoff then exits if either is unreachable.
+If Docker Desktop can't be started on your machine, `docs/DEV_ENVIRONMENT_SETUP.md` has a no-Docker fallback (native install / WSL2 / free-tier cloud DB).
 
-Seeded test accounts (per `backend/README.md` — verify against seeder, see §6.3):
+Seeded test accounts (confirmed against the real seeder, `seeders/20240101000001-seed-admins.js` and `...005-seed-demo-users.js`):
 - Super Admin: `superadmin@gmail.com` / `SuperAdmin@2025!`
 - Admin: `admin@gmail.com` / `Admin@2025!`
 - Moderator: `moderator@gmail.com` / `Moderator@2025!`
 - User: `user@gmail.com` / `User@2025!`
 
-Tests (from `backend/backend`): `npm test`, `npm run test:unit` (no DB), `npm run test:integration` (needs MySQL+Redis), `npm run test:coverage`.
+Tests (from `backend/backend`): `npm test` (195 tests, 22 suites, all passing), `npm run test:unit` (36 tests, no DB needed at all), `npm run test:integration` (155 tests, needs the Docker Compose stack running), `npm run test:coverage`.
 
 ## 8. Launch blockers (pre-production, from DEPLOY_CHECKLIST.md)
 
@@ -142,11 +149,12 @@ Tests (from `backend/backend`): `npm test`, `npm run test:unit` (no DB), `npm ru
 
 ## 9. Suggested next steps to continue building
 
-1. Get a reachable MySQL + Redis instance (local Docker once available, or a remote dev DB) so the backend test suite — now fixed, previously 100% broken — can actually run and the new regression test can be verified red/green.
-2. Delete the confirmed-dead frontend files (`api.service.ts`, `hooks/useApi.ts`, `services/index.ts`, `lib/mockPhase4Data.ts`) as a quick, safe cleanup PR.
-3. Decide and implement the SES bounce webhook if email bounce handling matters for your use case.
-4. Answer the essential questions in the master-prompt audit report (central IdP, Jobs/Education/Freelancing integration shape, payment provider) before starting the larger SSO/tenancy/payments work.
-5. Pick one feature area at a time to extend rather than broad "edit everything" passes, given the scope of ~400 files already in place.
+1. Delete the confirmed-dead frontend files (`api.service.ts`, `hooks/useApi.ts`, `services/index.ts`, `lib/mockPhase4Data.ts`) as a quick, safe cleanup PR — re-verify zero importers (including dynamic imports) immediately before deleting.
+2. Decide and implement the SES bounce webhook if email bounce handling matters for your use case.
+3. Add a real backend ESLint config (currently none exists — `npm run lint` fails outright) and work through the frontend's 81 pre-existing lint issues.
+4. Resolve the `Event.type` schema gap (schema accepts it, no column exists to store it — see ROADMAP A14) and the admin/user JWT secret sharing (SEC-02) and OAuth token-in-URL (SEC-03) findings.
+5. Answer the essential questions in the master-prompt audit report (central IdP, Jobs/Education/Freelancing integration shape, payment provider) before starting the larger SSO/tenancy/payments work.
+6. Pick one feature area at a time to extend rather than broad "edit everything" passes, given the scope of ~400 files already in place.
 
 ## 10. Full audit trail
 

@@ -20,7 +20,7 @@ Severity scale: **Critical** (exploitable now, broad impact), **High** (exploita
 
 **Correction to an earlier working note**: the super-admin-only `/admins` CRUD routes (create/update/delete/reset-password of other admin accounts) were initially suspected to be part of this gap too, but direct inspection of `admin.admins.controller.js` showed every one of those functions already has an inline `role !== 'super_admin'` guard. That sub-resource was never actually vulnerable.
 
-**Status**: Code fix applied and reviewed. A regression test (`tests/integration/admin.authorization.test.js`) was written but **not executed** — no local MySQL/Redis available in this environment (Docker daemon not running, requires interactive start). Needs a real test run before merging to confirm no typo/logic error in the fix.
+**Status**: **Fully fixed and execution-verified.** A local Docker Compose MySQL+Redis dev environment was stood up (`backend/backend/docker-compose.dev.yml`, see `docs/DEV_ENVIRONMENT_SETUP.md`), and `tests/integration/admin.authorization.test.js` now passes 7/7 against a real database — confirming the fix works correctly with no typos or logic errors.
 
 ## SEC-02 — Admin and user JWTs share the same signing secret — **Medium**
 
@@ -92,10 +92,16 @@ Severity scale: **Critical** (exploitable now, broad impact), **High** (exploita
 
 **Status**: Not fixed — recommend removing `express-mongo-sanitize` and evaluating a maintained alternative to `xss-clean` (e.g. explicit output encoding at render time, or a maintained sanitization library) as a follow-up, low-risk PR.
 
-## SEC-10 — NomadAI chat history persistence claim unverified — **Needs verification**
+## SEC-10 — NomadAI chat history persistence claim — **Confirmed false, not fixed**
 
-**Where**: Phase docs claim NomadAI has "persisted history," but no chat-history-shaped model was found among the 42 Sequelize models.
+**Where**: `src/controllers/nomad.controller.js`.
 
-**Impact**: Unknown until verified — could mean history is stored in Redis instead of MySQL (not yet checked), or the claim is simply inaccurate.
+**Finding**: Phase docs claim NomadAI has "persisted history." Direct read of the full controller confirms this is **false** — there is no database model, no Redis call, nothing. The entire conversation history is passed in from the client as `req.body.history` on every request and capped to the last 10 messages (`history.slice(-10)`); nothing is ever written server-side.
 
-**Status**: Not verified this pass — flagged in `docs/audit/FEATURE_MATRIX.md` as a follow-up investigation item.
+**Impact**: Chat history is lost on page reload / device switch / any client-side state loss. Not a security issue, but a real functional gap behind an inaccurate doc claim.
+
+**Status**: Not fixed — needs a design decision (persist to a new `NomadMessage`-style table? Redis with a TTL? neither, and just document the client-only behavior?) before implementing, per Track E in the roadmap (NomadAI multi-agent work).
+
+## BUG-02 through BUG-16 — see git log on `audit/baseline-verification`
+
+14 real runtime bugs (column/association mismatches, missing-validation gaps, wrong-model stats queries) and 2 test-expectation bugs were found and fixed by actually executing the full backend integration suite for the first time (previously blocked on no local MySQL/Redis, now resolved — see `docs/DEV_ENVIRONMENT_SETUP.md`). Full detail in the commit message for "fix: 16 real API bugs found by actually running the integration suite (BUG-03..16)". Verified: 195/195 backend tests passing (`npm test`).

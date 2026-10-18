@@ -4,18 +4,23 @@ Backlog organized by the master prompt's parallel workstreams (A-H). Priority: P
 
 ## Track A — Baseline + reliability (P0, in progress)
 
-- [x] A1. Fix Jest config so backend tests actually execute (BUG-01) — done, verified against connectivity-only failure.
-- [x] A2. Close admin role-authorization gap on system/settings routes (SEC-01) — done, pending live-DB test verification.
-- [ ] A3. Get the regression test (`admin.authorization.test.js`) actually running green — needs a reachable MySQL+Redis (local Docker or remote dev DB). **Blocked on**: environment access (see Essential Questions).
-- [ ] A4. Decide and fix the admin/user JWT secret sharing (SEC-02).
-- [ ] A5. Decide and fix the OAuth token-in-URL exposure (SEC-03).
-- [ ] A6. Reconcile `.env.example` drift (SEC-05) — quick, low-risk.
-- [ ] A7. Decide sqlite-vs-mysql for test env (SEC-06) and split unit/integration Jest setup (SEC-07).
-- [ ] A8. Triage `npm audit` findings on both frontend and backend, package by package (SEC-08).
-- [ ] A9. Remove dead code: `frontend/src/services/api.service.ts`, `hooks/useApi.ts`, `services/index.ts` barrel, `lib/mockPhase4Data.ts` — after confirming zero importers one more time at PR time (import graphs can drift).
-- [ ] A10. Remove `express-mongo-sanitize`/evaluate `xss-clean` replacement (SEC-09).
-- [ ] A11. Verify NomadAI chat history persistence claim (SEC-10) and document actual behavior.
-- [ ] A12. Verify `Pricing.tsx` and `Dashboard.tsx`/`Discover.tsx` backend wiring (flagged unverified in FEATURE_MATRIX.md).
+- [x] A1. Fix Jest config so backend tests actually execute (BUG-01) — done, verified.
+- [x] A2. Close admin role-authorization gap on system/settings routes (SEC-01) — done, **execution-verified**: `admin.authorization.test.js` passes 7/7 against real MySQL+Redis.
+- [x] A3. Get the regression test actually running green — done. Local dev environment stood up via `docker-compose.dev.yml` (MySQL 8.0.37 on :3306, Redis 7.4 on :6380). See `docs/DEV_ENVIRONMENT_SETUP.md`.
+- [x] A3b. Split Jest into unit/integration projects (SEC-07) — done. Unit tests (36 tests) now run with zero DB/Redis dependency; verified.
+- [x] A3c. Ran the full integration suite for the first time ever — went from never-executed to 155/155 passing, surfacing and fixing 14 real runtime bugs (BUG-03 through BUG-16, see git log on `audit/baseline-verification`) plus 2 test-expectation bugs. Full backend test command: 22 suites, 195 tests, all passing.
+- [x] A8 (partial). Triaged and fixed the two **critical** `npm audit` findings on each side without `--force`: backend `tar` (via override, bcrypt stays on 5.1.1), frontend `tinypool` (via override, vitest stays on 3.2.7) + `react-router-dom` patch bump. Backend 44→41 vulnerabilities (0 critical), frontend 37→35 (0 critical). Remaining 41+35 are dev-tooling major-version bumps (jest→30, nodemon→3 replacement, vite/vitest major) deferred — each needs its own compatibility-tested PR, not a blanket `--force`.
+- [x] A11. Verified NomadAI chat history persistence claim (SEC-10) — **confirmed false**. `nomad.controller.js` has zero persistence of any kind; the entire conversation history is client-supplied in `req.body.history` and never written to DB or Redis.
+- [ ] A4. Decide and fix the admin/user JWT secret sharing (SEC-02) — not started, needs a decision (see Essential Questions in prior report).
+- [ ] A5. Decide and fix the OAuth token-in-URL exposure (SEC-03) — not started.
+- [ ] A6. Reconcile `.env.example` drift (SEC-05) — not started, quick/low-risk.
+- [ ] A7. Decide sqlite-vs-mysql for test env (SEC-06) — superseded in practice by A3 (Docker Compose dev stack makes a real MySQL trivial to get); revisit only if CI needs a lighter-weight option.
+- [ ] A8 (remainder). Triage the remaining ~76 non-critical `npm audit` findings (dev-tooling major bumps) as dedicated, individually-tested PRs.
+- [ ] A9. Remove dead code: `frontend/src/services/api.service.ts`, `hooks/useApi.ts`, `services/index.ts` barrel, `lib/mockPhase4Data.ts` — still not done. Per updated instruction: verify dynamic imports/future-integration references once more immediately before deleting, don't delete solely because grep shows zero current importers.
+- [ ] A10. Remove `express-mongo-sanitize`/evaluate `xss-clean` replacement (SEC-09) — not started.
+- [ ] A12. Verify `Pricing.tsx` and `Dashboard.tsx`/`Discover.tsx` backend wiring (flagged unverified in FEATURE_MATRIX.md) — not started.
+- [ ] A13 (new). No ESLint config exists for the backend at all (`npm run lint` fails outright: "ESLint couldn't find a configuration file"). Frontend lint runs but reports 81 pre-existing problems (68 errors, mostly `@typescript-eslint/no-explicit-any`, plus one `no-require-imports` in `tailwind.config.ts`) — none introduced this session, needs a dedicated cleanup pass.
+- [ ] A14 (new). `Event.type`/`Opportunity` schema gaps found while fixing BUG-11/BUG-13: the event-creation Joi schema accepts a `type` (online/in_person/hybrid) field that is silently dropped on create because no such column exists (only `is_online` boolean). Needs a decision: add a real `type` column via migration, or simplify the schema to match `is_online`.
 
 ## Track B — Ecosystem SSO and multi-tenancy (P0 architecture, gated rollout)
 
