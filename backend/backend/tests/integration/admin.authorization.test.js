@@ -34,9 +34,15 @@ describe('Admin role authorization — sensitive routes', () => {
     await Admin.create({ email: superAdminCreds.email, password_hash: superHash, name: 'Super Authz Test', role: 'super_admin', is_active: true });
 
     let res = await request(app).post('/api/v1/admin/auth/login').send(moderatorCreds);
+    if (res.status !== 200) {
+      throw new Error('moderator login failed: status=' + res.status + ' body=' + JSON.stringify(res.body));
+    }
     moderatorToken = res.body.data.access_token;
 
     res = await request(app).post('/api/v1/admin/auth/login').send(superAdminCreds);
+    if (res.status !== 200) {
+      throw new Error('super_admin login failed: status=' + res.status + ' body=' + JSON.stringify(res.body));
+    }
     superAdminToken = res.body.data.access_token;
   });
 

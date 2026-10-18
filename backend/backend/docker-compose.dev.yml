@@ -1,0 +1,60 @@
+version: "3.9"
+
+# Local development/test infrastructure ONLY. Never points at production.
+# Starts a disposable MySQL 8 + Redis 7 pair on the ports the app already
+# expects by default (3306, 6379), so no .env changes are required beyond
+# copying .env.example to .env.
+#
+# One MySQL instance hosts both the dev database (usam_hub_dev) and the
+# test database (usam_hub_test) as separate schemas, matching how
+# src/config/database.js already distinguishes "development" vs "test"
+# purely by DB_NAME vs DB_NAME_TEST on the same host/credentials.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   docker compose -f docker-compose.dev.yml down          # stop, keep data
+#   docker compose -f docker-compose.dev.yml down -v       # stop, wipe data
+#
+# See docs/DEV_ENVIRONMENT_SETUP.md for the full setup walkthrough.
+
+services:
+  mysql:
+    image: mysql:8.0.37
+    container_name: usamhub-dev-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: devroot
+      MYSQL_DATABASE: usam_hub_dev
+      MYSQL_USER: usam_dev
+      MYSQL_PASSWORD: devpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - usamhub_dev_mysql_data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pdevroot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: usamhub-dev-redis
+    restart: unless-stopped
+    ports:
+      # Host port 6380, not 6379: this machine already has an unrelated
+      # project's Redis container bound to 6379. Set REDIS_PORT=6380 in
+      # .env to match. Container-internal port stays 6379.
+      - "6380:6379"
+    volumes:
+      - usamhub_dev_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  usamhub_dev_mysql_data:
+  usamhub_dev_redis_data:
