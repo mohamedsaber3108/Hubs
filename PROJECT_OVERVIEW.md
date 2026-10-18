@@ -156,6 +156,10 @@ Tests (from `backend/backend`): `npm test` (195 tests, 22 suites, all passing), 
 5. Answer the essential questions in the master-prompt audit report (central IdP, Jobs/Education/Freelancing integration shape, payment provider) before starting the larger SSO/tenancy/payments work.
 6. Pick one feature area at a time to extend rather than broad "edit everything" passes, given the scope of ~400 files already in place.
 
+## 9b. Ecosystem context
+
+USAM Hub (this project) is one of five USAM-family products, each its own repo/stack/domain under `usamif.com`: E-USAM (`edu.usamif.com`, e-learning), USAM for Kids (`kids.usamif.com`), Noventra (`noventra.com`, study-abroad fairs — the misleadingly-named `jobs.usamif` folder), and USAMKO (`usamko.usamif.com`, B2B lead-gen). A verified read-only inspection of all five — stacks, auth systems, databases, domains, duplication, and a proposed unified SSO/shared-services architecture — is in `docs/ecosystem/ECOSYSTEM_ARCHITECTURE_AND_INTEGRATION.md`. Note: whether `hub.usamif.com` is this project's intended domain is **unverified** (its nginx still uses a placeholder); see that report §2.
+
 ## 10. Full audit trail
 
 A deeper, evidence-based audit was performed on `audit/baseline-verification` branch (Oct 2026) per a master development prompt. See:
