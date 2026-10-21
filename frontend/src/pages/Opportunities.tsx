@@ -7,19 +7,20 @@ import { useOpportunities, useSaveOpportunityMutation } from "@/hooks/api/useOpp
 import { useAuth } from "@/contexts/AuthContext";
 import type { Opportunity } from "@/lib/types";
 
-const TYPES = ['all', 'job', 'internship', 'freelance', 'scholarship', 'fellowship', 'grant'];
-const LOC_TYPES = ['all', 'remote', 'onsite', 'hybrid'];
+// Aligned with the backend Opportunity ENUM (src/models/Opportunity.js).
+const TYPES = ['all', 'gig', 'full-time', 'part-time', 'internship', 'volunteer', 'scholarship', 'mentorship', 'collaboration'];
+const LOC_TYPES = ['all', 'remote', 'onsite'];
 
 const TYPE_COLORS: Record<string, string> = {
-  job: 'bg-blue-500/10 text-blue-500', internship: 'bg-purple-500/10 text-purple-500',
-  freelance: 'bg-orange-500/10 text-orange-500', scholarship: 'bg-green-500/10 text-green-500',
-  fellowship: 'bg-pink-500/10 text-pink-500', grant: 'bg-yellow-500/10 text-yellow-500',
+  gig: 'bg-orange-500/10 text-orange-500', 'full-time': 'bg-blue-500/10 text-blue-500',
+  'part-time': 'bg-sky-500/10 text-sky-500', internship: 'bg-purple-500/10 text-purple-500',
+  volunteer: 'bg-teal-500/10 text-teal-500', scholarship: 'bg-green-500/10 text-green-500',
+  mentorship: 'bg-pink-500/10 text-pink-500', collaboration: 'bg-yellow-500/10 text-yellow-500',
 };
 
 function OpportunityCard({ opp, onSave }: { opp: Opportunity; onSave?: () => void }) {
   return (
     <div className="bg-card border border-border rounded-xl p-5 hover:border-primary-glow/30 transition-all group relative">
-      {opp.is_featured && <span className="absolute top-3 end-3 text-xs px-2 py-0.5 rounded-full bg-yellow-400/10 text-yellow-500 font-medium">⭐ Featured</span>}
       <div className="flex items-start gap-4">
         <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0">
           <Briefcase className="w-6 h-6 text-muted-foreground" />
@@ -31,10 +32,10 @@ function OpportunityCard({ opp, onSave }: { opp: Opportunity; onSave?: () => voi
               {opp.saved ? <BookmarkCheck className="w-5 h-5 text-primary-glow" /> : <Bookmark className="w-5 h-5" />}
             </button>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">{opp.company || 'USAM Hub'} · {opp.location || opp.location_type}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{opp.company || 'USAM Hub'} · {opp.location || (opp.is_remote ? 'Remote' : '—')}</p>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[opp.type] || 'bg-secondary text-muted-foreground'}`}>{opp.type}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground capitalize">{opp.location_type}</span>
+            {opp.is_remote && <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">Remote</span>}
             {opp.deadline && <span className="text-xs text-muted-foreground">Deadline: {new Date(opp.deadline).toLocaleDateString()}</span>}
           </div>
           <p className="text-sm text-muted-foreground mt-3 line-clamp-2">{opp.description}</p>

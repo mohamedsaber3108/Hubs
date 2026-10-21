@@ -90,4 +90,65 @@ describe('Opportunities API', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('GET /api/v1/opportunities?location_type=remote (BUG-fix: is_remote mapping)', () => {
+    it('does not 500 on the location filter (previously queried a nonexistent column)', async () => {
+      const res = await request(app).get('/api/v1/opportunities?location_type=remote');
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe('Application status workflow (BUG-fix: poster owner check uses posted_by)', () => {
+    // Regression for the bug where updateApplication checked
+    // app.opportunity.user_id (undefined) instead of posted_by, so a real
+    // poster got 403 and only admins could update application status.
+    let posterToken, applicantToken, oppId2, appId;
+
+    beforeAll(async () => {
+      ({ token: posterToken } = await createUserAndLogin());
+      ({ token: applicantToken } = await createUserAndLogin());
+
+      // poster creates an opportunity
+      const created = await request(app)
+        .post('/api/v1/opportunities')
+        .set('Authorization', `Bearer ${posterToken}`)
+        .send({
+          title: 'Workflow Test Role',
+          description: 'Opportunity for the application-status workflow test',
+          type: 'gig',
+          community_slug: 'freelancespace',
+        });
+      oppId2 = created.body.data?.opportunity?.id;
+
+      // applicant applies
+      const applied = await request(app)
+        .post(`/api/v1/opportunities/${oppId2}/apply`)
+        .set('Authorization', `Bearer ${applicantToken}`)
+        .field('cover_letter', 'Please consider me');
+      // applications are listed by the poster to get the id
+      const apps = await request(app)
+        .get(`/api/v1/opportunities/${oppId2}/applications`)
+        .set('Authorization', `Bearer ${posterToken}`);
+      appId = apps.body.data?.[0]?.id;
+    });
+
+    it('lets the real poster (not just admin) update application status', async () => {
+      if (!appId) return;
+      const res = await request(app)
+        .patch(`/api/v1/opportunities/${oppId2}/applications/${appId}`)
+        .set('Authorization', `Bearer ${posterToken}`)
+        .send({ status: 'shortlisted' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.application.status).toBe('shortlisted');
+    });
+
+    it('forbids a non-owner from updating application status', async () => {
+      if (!appId) return;
+      const res = await request(app)
+        .patch(`/api/v1/opportunities/${oppId2}/applications/${appId}`)
+        .set('Authorization', `Bearer ${applicantToken}`)
+        .send({ status: 'accepted' });
+      expect(res.status).toBe(403);
+    });
+  });
 });

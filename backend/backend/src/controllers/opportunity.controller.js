@@ -17,7 +17,11 @@ const listOpportunities = async (req, res, next) => {
     const where = {};
     if (status)        where.status = status;
     if (type)          where.type   = type;
-    if (location_type) where.location_type = location_type;
+    // BUG: `location_type` is not a real column on Opportunity (the model
+    // has `location` + `is_remote`). Map the client's location filter onto
+    // the real column instead of querying a non-existent one.
+    if (location_type === 'remote')  where.is_remote = true;
+    else if (location_type === 'onsite') where.is_remote = false;
     if (search) {
       where[Op.or] = [
         { title:       { [Op.like]: '%' + search + '%' } },
@@ -173,8 +177,13 @@ const updateApplication = async (req, res, next) => {
       include: [{ model: Opportunity, as: 'opportunity' }],
     });
     if (!app) return next(ApiError.notFound('Application not found'));
-    if (app.opportunity.user_id !== req.user.id && req.user.role !== 'admin') return next(ApiError.forbidden('Owner only'));
-    await app.update({ status: req.body.status, notes: req.body.notes });
+    // BUG: the opportunity owner column is `posted_by`, not `user_id`.
+    // Checking `app.opportunity.user_id` (undefined) made the guard always
+    // fail for real posters, so only admins could update application status.
+    if (app.opportunity.posted_by !== req.user.id && req.user.role !== 'admin') return next(ApiError.forbidden('Owner only'));
+    // BUG: `notes` is not a column on OpportunityApplication — writing it
+    // was a silent no-op / strict-mode error. Only `status` is persisted.
+    await app.update({ status: req.body.status });
     await createNotification(app.user_id, {
       title: 'Application update',
       message: 'Your application for "' + app.opportunity.title + '" is now ' + req.body.status,

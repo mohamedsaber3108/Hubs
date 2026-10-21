@@ -192,21 +192,30 @@ export interface ChallengeSubmission {
 }
 
 // ─── Opportunity ──────────────────────────────────────────────────────────────
+// Aligned with the backend Opportunity model (src/models/Opportunity.js):
+// the real ENUM is gig/full-time/part-time/internship/volunteer/scholarship/
+// mentorship/collaboration, and location is modeled as `location` (string) +
+// `is_remote` (boolean). There is no location_type / is_featured / views_count /
+// requirements / is_free column — those were a frontend/backend contract drift.
+export type OpportunityType =
+  | 'gig' | 'full-time' | 'part-time' | 'internship'
+  | 'volunteer' | 'scholarship' | 'mentorship' | 'collaboration';
+
 export interface Opportunity {
   id: number;
   title: string;
-  type: 'job' | 'internship' | 'freelance' | 'volunteer' | 'scholarship' | 'fellowship' | 'grant' | 'competition';
+  type: OpportunityType;
   company: string | null;
+  company_logo_url: string | null;
   location: string | null;
-  location_type: 'remote' | 'onsite' | 'hybrid';
+  is_remote: boolean;
+  salary_range: string | null;
+  skills: string[];
   description: string;
-  requirements: string | null;
+  apply_url: string | null;
   deadline: string | null;
   applications_count: number;
-  views_count: number;
   status: 'open' | 'closed' | 'filled';
-  is_featured: boolean;
-  is_free: boolean;
   community: CommunityMinimal;
   poster: UserMinimal;
   applied?: boolean;
