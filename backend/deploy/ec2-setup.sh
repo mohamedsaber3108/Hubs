@@ -87,12 +87,21 @@ echo ""
 echo "⚠️  IMPORTANT: Edit /var/www/usam-hub/backend/.env with your real values!"
 echo ""
 
-# Run database migrations and seeds
+# Run database migrations and structural seeds.
+# NOTE: with NODE_ENV=production the admin + demo-user seeders self-skip, so
+# this loads only structural data (communities/settings/pricing/templates) —
+# never demo users or a fixed-credential default admin.
 cd $APP_DIR/backend
-npx sequelize-cli db:migrate
-npx sequelize-cli db:seed:all
+NODE_ENV=production npx sequelize-cli db:migrate
+NODE_ENV=production npx sequelize-cli db:seed:all
 
-# Start with PM2
+echo ""
+echo "⚠️  Provision the initial super-admin explicitly before using the admin portal:"
+echo "    cd $APP_DIR/backend && INITIAL_ADMIN_EMAIL=you@domain \\"
+echo "      INITIAL_ADMIN_PASSWORD='<strong>' NODE_ENV=production npm run provision:admin"
+echo ""
+
+# Start with PM2 (app name: usam-hub-api)
 pm2 start $APP_DIR/deploy/pm2.config.js
 pm2 startup systemd -u ubuntu --hp /home/ubuntu
 pm2 save

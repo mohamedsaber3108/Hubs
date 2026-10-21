@@ -14,6 +14,7 @@
     "migrate:undo": "sequelize-cli db:migrate:undo",
     "seed": "sequelize-cli db:seed:all",
     "seed:undo": "sequelize-cli db:seed:undo:all",
+    "provision:admin": "node scripts/provision-admin.js",
     "lint": "eslint src/ --ext .js",
     "lint:fix": "eslint src/ --ext .js --fix"
   },
@@ -67,6 +68,10 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "optionalDependenciesComment": "@socket.io/redis-adapter is the Socket.IO multi-worker broadcast adapter. It is OPTIONAL so npm ci still works if the registry is briefly unreachable; src/server.js require()s it defensively and falls back to single-process socket mode (with a loud warning) when absent. It is REQUIRED for production PM2 clustering — ensure it installs in the production/CI environment.",
+  "optionalDependencies": {
+    "@socket.io/redis-adapter": "^8.3.0"
   },
   "overrides": {
     "tar": "^7.5.22"

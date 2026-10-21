@@ -3,6 +3,17 @@ const bcrypt = require('bcrypt');
 
 module.exports = {
   async up(queryInterface) {
+    // PRODUCTION SAFETY: never seed demo users (with known passwords) into a
+    // production database. This seeder is for local/dev/test fixtures only.
+    // In production, real users register through the app and the initial
+    // administrator is provisioned explicitly via `npm run provision:admin`
+    // (scripts/provision-admin.js), which reads credentials from env.
+    if (process.env.NODE_ENV === 'production') {
+      // eslint-disable-next-line no-console
+      console.log('[seed-demo-users] NODE_ENV=production — skipping demo user seed.');
+      return;
+    }
+
     const userHash = await bcrypt.hash('User@2025!', 12);
     const demoHash = await bcrypt.hash('Demo@2025!', 12);
     const now = new Date();

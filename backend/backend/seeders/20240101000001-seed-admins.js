@@ -3,6 +3,17 @@ const bcrypt = require('bcrypt');
 
 module.exports = {
   async up(queryInterface) {
+    // PRODUCTION SAFETY: the three fixed-credential admin accounts below are
+    // DEV/TEST fixtures with publicly-known passwords. Never seed them into a
+    // production database. In production the initial super-admin is created
+    // explicitly and securely via `npm run provision:admin`
+    // (scripts/provision-admin.js), which reads a strong password from env.
+    if (process.env.NODE_ENV === 'production') {
+      // eslint-disable-next-line no-console
+      console.log('[seed-admins] NODE_ENV=production — skipping default admin seed. Use `npm run provision:admin`.');
+      return;
+    }
+
     const superAdminHash = await bcrypt.hash('SuperAdmin@2025!', 12);
     const adminHash      = await bcrypt.hash('Admin@2025!', 12);
     const modHash        = await bcrypt.hash('Moderator@2025!', 12);
