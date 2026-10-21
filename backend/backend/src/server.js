@@ -25,6 +25,46 @@ const io = new SocketServer(server, {
 // Attach io to app for use in controllers
 app.set('io', io);
 
+// ─── Socket.io Redis adapter (multi-worker fan-out) ─────────────────────────────
+// Under PM2 cluster mode (deploy/pm2.config.js: instances:'max') each worker is
+// a separate process with its own in-memory socket registry. Without a shared
+// adapter, a broadcast from worker A never reaches clients on worker B, so chat
+// messages and notifications silently fail to deliver in production. The Redis
+// adapter puts every worker on a shared Redis pub/sub bus so broadcasts fan out
+// across all workers. Implemented defensively: if the adapter package or Redis
+// is unavailable, we log loudly and continue in single-process mode rather than
+// crash — correct degradation (sockets still work within one worker).
+async function setupSocketAdapter() {
+  try {
+    const Redis = require('ioredis');
+    const { createAdapter } = require('@socket.io/redis-adapter');
+    const redisOpts = {
+      host: process.env.REDIS_HOST || '127.0.0.1',
+      port: parseInt(process.env.REDIS_PORT) || 6379,
+      password: process.env.REDIS_PASSWORD || undefined,
+      db: parseInt(process.env.REDIS_DB) || 0,
+    };
+    const pubClient = new Redis(redisOpts);
+    const subClient = pubClient.duplicate();
+    // Don't let adapter client errors take the process down — log and keep serving.
+    pubClient.on('error', (e) => logger.error('Socket.IO Redis pub client error: ' + e.message));
+    subClient.on('error', (e) => logger.error('Socket.IO Redis sub client error: ' + e.message));
+    await Promise.all([
+      pubClient.status === 'ready' ? Promise.resolve() : new Promise((res) => pubClient.once('ready', res)),
+      subClient.status === 'ready' ? Promise.resolve() : new Promise((res) => subClient.once('ready', res)),
+    ]);
+    io.adapter(createAdapter(pubClient, subClient));
+    logger.info('Socket.IO Redis adapter enabled (multi-worker broadcast active)');
+  } catch (err) {
+    logger.warn(
+      'Socket.IO Redis adapter NOT enabled (' + err.message + '). ' +
+      'Running single-process socket mode — safe for a single PM2 worker, but ' +
+      'broadcasts will NOT cross workers under cluster mode. Install ' +
+      '@socket.io/redis-adapter and ensure Redis is reachable for production clustering.',
+    );
+  }
+}
+
 // Socket.io namespaces
 const chatNS         = io.of('/chat');
 const notificationNS = io.of('/notifications');
@@ -79,6 +119,9 @@ async function start() {
   try {
     await connectWithRetry(() => sequelize.authenticate(), 'MySQL');
     await connectWithRetry(() => getRedisClient().ping(), 'Redis');
+
+    // Wire the Socket.IO Redis adapter now that Redis is confirmed reachable.
+    await setupSocketAdapter();
 
     // Register background jobs
     require('./jobs/email.job');
