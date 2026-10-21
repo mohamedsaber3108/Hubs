@@ -5,6 +5,7 @@ export const queryKeys = {
   // Communities
   communities: () => ['communities'] as const,
   community: (slug: string) => ['communities', slug] as const,
+  recommendedCommunities: () => ['communities', 'recommended'] as const,
 
   // Posts / Feed
   feed: (params?: object) => ['feed', params] as const,

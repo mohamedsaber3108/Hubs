@@ -19,6 +19,13 @@ export interface PaginatedResponse<T> {
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
+// Personas a user can select during onboarding. Mirrors the backend's
+// VALID_ROLES (onboarding.controller.js) and PERSONA_COMMUNITY_AFFINITY keys
+// (community.controller.js) — keep in sync with the backend.
+export type ProfessionalRole =
+  | 'freelancer' | 'student' | 'recruiter' | 'employer'
+  | 'entrepreneur' | 'job_seeker' | 'mentor';
+
 export interface AuthUser {
   id: number;
   uuid: string;
@@ -33,6 +40,9 @@ export interface AuthUser {
   status: 'active' | 'suspended' | 'banned';
   email_verified: boolean;
   onboarding_completed: boolean;
+  // Persona(s) chosen during onboarding — drives differentiated community
+  // experiences and persona-aware recommendations. Multi-value.
+  professional_roles: ProfessionalRole[];
   points_total: number;
   followers_count: number;
   following_count: number;
@@ -60,6 +70,21 @@ export interface Community {
   is_active: boolean;
   cover_image: string | null;
   joined?: boolean;
+}
+
+// Returned by GET /communities/recommended — a Community enriched with
+// persona-aware recommendation metadata.
+export interface RecommendedCommunity extends Community {
+  is_member: boolean;
+  match_score: number;
+  matched_personas: ProfessionalRole[];
+  reason: string | null;
+}
+
+export interface RecommendationsResult {
+  communities: RecommendedCommunity[];
+  personalized: boolean;
+  personas: ProfessionalRole[];
 }
 
 // ─── Post / Feed ─────────────────────────────────────────────────────────────

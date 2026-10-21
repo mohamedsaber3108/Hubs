@@ -11,11 +11,27 @@ export function useCommunity(slug: string) {
   return useQuery({ queryKey: queryKeys.community(slug), queryFn: () => communityService.get(slug), enabled: !!slug });
 }
 
+// Persona-aware community recommendations. Shorter staleTime than the plain
+// list because results depend on the viewer's personas + membership state,
+// which change as they onboard and join/leave communities.
+export function useRecommendedCommunities() {
+  return useQuery({
+    queryKey: queryKeys.recommendedCommunities(),
+    queryFn: communityService.recommended,
+    staleTime: 60_000,
+  });
+}
+
 export function useJoinCommunityMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: communityService.join,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.communities() }); toast.success('Joined community!'); },
+    onSuccess: () => {
+      // queryKeys.communities() is a prefix of recommendedCommunities(), so a
+      // single prefix-invalidation refreshes both the list and recommendations.
+      qc.invalidateQueries({ queryKey: queryKeys.communities() });
+      toast.success('Joined community!');
+    },
   });
 }
 
@@ -23,6 +39,9 @@ export function useLeaveCommunityMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: communityService.leave,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.communities() }); toast.success('Left community'); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.communities() });
+      toast.success('Left community');
+    },
   });
 }

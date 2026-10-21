@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   LayoutDashboard, Users, Calendar, Briefcase, MessageSquare, Bell,
@@ -6,11 +5,13 @@ import {
   Trophy, BookOpen, Zap, Star, GraduationCap, Bot, Heart,
   TrendingUp, Target, Rocket, Award,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import USAMLogo from "@/components/USAMLogo";
 import DarkModeToggle from "@/components/DarkModeToggle";
 import NotificationPanel from "@/components/NotificationPanel";
 import { COMMUNITIES } from "@/lib/communities";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRecommendedCommunities } from "@/hooks/api/useCommunities";
 
 import { Button } from "@/components/ui/button";
 
@@ -330,10 +331,31 @@ const CONTENT_MAP: Record<string, () => JSX.Element> = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { data: recs } = useRecommendedCommunities();
   const [collapsed, setCollapsed] = useState(false);
   const [activeCommunity, setActiveCommunity] = useState<string>(COMMUNITIES[0].id);
   const [activeNav, setActiveNav] = useState("Home");
   const [searchOpen, setSearchOpen] = useState(false);
+  // userTouched: once the user manually picks a space, stop auto-selecting so
+  // we don't yank them off the community they chose when recommendations load.
+  const [userTouched, setUserTouched] = useState(false);
+
+  // Default the active space to the user's top persona-recommended community.
+  // Only applies to the known four spaces the dashboard renders content for,
+  // and only until the user interacts with the switcher.
+  useEffect(() => {
+    if (userTouched || !recs?.personalized) return;
+    const top = recs.communities.find(
+      (c) => c.match_score > 0 && COMMUNITIES.some((k) => k.id === c.slug),
+    );
+    if (top) setActiveCommunity(top.slug);
+  }, [recs, userTouched]);
+
+  const selectCommunity = (id: string) => {
+    setUserTouched(true);
+    setActiveCommunity(id);
+    setActiveNav("Home");
+  };
 
   const currentCommunity = COMMUNITIES.find((c) => c.id === activeCommunity)!;
   const navItems = COMMUNITY_NAV[activeCommunity] || COMMUNITY_NAV.freelancespace;
@@ -357,7 +379,7 @@ export default function Dashboard() {
           {collapsed ? (
             <div className="flex flex-col items-center gap-1">
               {COMMUNITIES.map((c) => (
-                <button key={c.id} onClick={() => { setActiveCommunity(c.id); setActiveNav("Home"); }}
+                <button key={c.id} onClick={() => selectCommunity(c.id)}
                   className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg transition-colors ${activeCommunity === c.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"}`}
                   title={c.name}
                 >
@@ -369,7 +391,7 @@ export default function Dashboard() {
             <div className="space-y-0.5">
               <span className="text-[10px] text-sidebar-foreground/40 uppercase tracking-wider px-2">Spaces</span>
               {COMMUNITIES.map((c) => (
-                <button key={c.id} onClick={() => { setActiveCommunity(c.id); setActiveNav("Home"); }}
+                <button key={c.id} onClick={() => selectCommunity(c.id)}
                   className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeCommunity === c.id ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"}`}
                 >
                   <span>{c.emoji}</span><span>{c.name}</span>

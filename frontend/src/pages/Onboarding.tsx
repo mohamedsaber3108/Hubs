@@ -10,15 +10,31 @@ import { onboardingService } from "@/services/onboarding.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/user.service";
 import { toast } from "sonner";
+import type { ProfessionalRole } from "@/lib/types";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
+
+// Personas drive the differentiated community experience + persona-aware
+// recommendations. Keys MUST match the backend VALID_ROLES
+// (onboarding.controller.js) and PERSONA_COMMUNITY_AFFINITY keys
+// (community.controller.js).
+const PERSONAS: { key: ProfessionalRole; emoji: string; label: string; desc: string }[] = [
+  { key: "freelancer",   emoji: "🧑‍💻", label: "Freelancer",    desc: "I work independently on projects" },
+  { key: "student",      emoji: "🎓", label: "Student",        desc: "I'm studying or a recent grad" },
+  { key: "job_seeker",   emoji: "🔍", label: "Job Seeker",     desc: "I'm looking for my next role" },
+  { key: "entrepreneur", emoji: "🚀", label: "Entrepreneur",   desc: "I'm building a startup or venture" },
+  { key: "recruiter",    emoji: "🧑‍💼", label: "Recruiter",     desc: "I hire and source talent" },
+  { key: "employer",     emoji: "🏢", label: "Employer",       desc: "I run a team or company" },
+  { key: "mentor",       emoji: "🧭", label: "Mentor",         desc: "I guide and coach others" },
+];
 
 const GOALS = ["Find a job or internship", "Grow my freelance business", "Build my network", "Learn new skills", "Get mentorship", "Discover funding & grants", "Showcase my work", "Meet co-founders"];
-const EXPERIENCE_LEVELS = [
-  { key: "student",      label: "Student",        desc: "Currently enrolled or recent grad" },
-  { key: "junior",       label: "Junior (0-2y)",   desc: "Early career professional" },
-  { key: "intermediate", label: "Mid-Level (3-5y)", desc: "Established professional" },
-  { key: "senior",       label: "Senior (6y+)",    desc: "Experienced leader" },
+// UI experience levels mapped to the backend ENUM (beginner/intermediate/expert).
+const EXPERIENCE_LEVELS: { key: string; label: string; desc: string; backend: 'beginner' | 'intermediate' | 'expert' }[] = [
+  { key: "student",      label: "Student",        desc: "Currently enrolled or recent grad", backend: "beginner" },
+  { key: "junior",       label: "Junior (0-2y)",   desc: "Early career professional",        backend: "beginner" },
+  { key: "intermediate", label: "Mid-Level (3-5y)", desc: "Established professional",        backend: "intermediate" },
+  { key: "senior",       label: "Senior (6y+)",    desc: "Experienced leader",               backend: "expert" },
 ];
 const POPULAR_SKILLS = ["React", "Python", "Figma", "Node.js", "Data Analysis", "Marketing", "TypeScript", "AI/ML", "Business Dev", "Project Mgmt", "UI/UX", "Content Writing", "SEO", "Sales", "AWS", "Flutter"];
 
@@ -27,6 +43,7 @@ export default function Onboarding() {
   const { setUser } = useAuth();
   const [step, setStep] = useState(1);
   const [communities, setCommunities] = useState<string[]>([]);
+  const [personas, setPersonas]       = useState<ProfessionalRole[]>([]);
   const [goals, setGoals]             = useState<string[]>([]);
   const [skills, setSkills]           = useState<string[]>([]);
   const [experienceLevel, setExperienceLevel] = useState("intermediate");
@@ -35,7 +52,19 @@ export default function Onboarding() {
   const [location, setLocation]       = useState("");
 
   const { mutate: submit, isPending } = useMutation({
-    mutationFn: () => onboardingService.submit({ communities, goals, skills, experience_level: experienceLevel, headline, bio, location, role: experienceLevel }),
+    mutationFn: () => {
+      const level = EXPERIENCE_LEVELS.find((l) => l.key === experienceLevel)?.backend ?? "beginner";
+      return onboardingService.submit({
+        communities,
+        professional_roles: personas,
+        goals,
+        skills,
+        experience_level: level,
+        headline,
+        bio,
+        location,
+      });
+    },
     onSuccess: async () => {
       const updated = await userService.getMe();
       setUser(updated);
@@ -85,8 +114,32 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* Step 2: Experience & Goals */}
+        {/* Step 2: Personas — drives differentiated experience + recommendations */}
         {step === 2 && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-foreground">What best describes you?</h2>
+              <p className="text-muted-foreground text-sm mt-1">Pick all that apply — we'll tailor your experience</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {PERSONAS.map((p) => {
+                const active = personas.includes(p.key);
+                return (
+                  <button key={p.key} onClick={() => toggleItem(personas, setPersonas, p.key, PERSONAS.length)}
+                    className={`relative p-4 rounded-xl border-2 text-start transition-all ${active ? "border-primary-glow bg-primary-glow/5" : "border-border bg-card hover:border-primary-glow/40"}`}>
+                    {active && <Check className="absolute top-2 end-2 w-4 h-4 text-primary-glow" />}
+                    <span className="text-2xl block mb-2">{p.emoji}</span>
+                    <p className="font-semibold text-foreground text-sm">{p.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{p.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Experience & Goals */}
+        {step === 3 && (
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-bold text-foreground mb-4">Your experience level</h2>
@@ -115,8 +168,8 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* Step 3: Skills */}
-        {step === 3 && (
+        {/* Step 4: Skills */}
+        {step === 4 && (
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-xl font-bold text-foreground">Your key skills</h2>
@@ -133,8 +186,8 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* Step 4: Profile basics */}
-        {step === 4 && (
+        {/* Step 5: Profile basics */}
+        {step === 5 && (
           <div className="space-y-4">
             <div className="text-center mb-2">
               <h2 className="text-xl font-bold text-foreground">Almost there!</h2>
@@ -171,7 +224,7 @@ export default function Onboarding() {
           <Button
             className="flex-1 gap-2 bg-primary-glow text-primary-foreground h-11"
             onClick={() => step < TOTAL_STEPS ? setStep(step + 1) : submit()}
-            disabled={(step === 1 && communities.length === 0) || isPending}
+            disabled={(step === 1 && communities.length === 0) || (step === 2 && personas.length === 0) || isPending}
           >
             {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : step < TOTAL_STEPS ? <><span>Continue</span><ChevronRight className="w-4 h-4" /></> : <><span>Get Started 🚀</span></>}
           </Button>
