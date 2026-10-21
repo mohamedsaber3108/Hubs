@@ -30,10 +30,11 @@ The deployment story is **well-architected and matches the confirmed stack exact
 
 ## 2. Blockers (must fix before go-live)
 
-### BLOCKER-1 (High) — Socket.IO has no Redis adapter under PM2 cluster
-`pm2.config.js` runs `exec_mode: 'cluster'` with `instances: 'max'` (one worker per CPU). `src/server.js` attaches Socket.IO with **no `@socket.io/redis-adapter`**. In cluster mode each worker is a separate process with its own in-memory socket registry, so a `chat`/`notifications` broadcast emitted from worker A **never reaches clients connected to worker B**. Real-time messaging and notifications will appear to randomly "not deliver" in production the moment there is more than one worker.
-- **Fix:** add `@socket.io/redis-adapter` (Redis is already provisioned) and wire `io.adapter(createAdapter(pubClient, subClient))` in `server.js`. Low effort, high impact.
-- **Interim mitigation if not fixed:** set `instances: 1` in `pm2.config.js` (single worker) — loses multi-core scaling but makes sockets correct. Not recommended as the permanent answer.
+### BLOCKER-1 (High) — Socket.IO has no Redis adapter under PM2 cluster — ✅ RESOLVED (commit 388978c)
+Original finding: `pm2.config.js` runs `exec_mode: 'cluster'` with `instances: 'max'`; `src/server.js` attached Socket.IO with no `@socket.io/redis-adapter`, so broadcasts never crossed workers.
+- **Resolution:** `@socket.io/redis-adapter` is now a hard `dependency` (lockfile synced; `npm ci` deterministic). `setupSocketAdapter()` wires `io.adapter(createAdapter(pub, sub))` with a bounded boot-time Redis reachability check. Verified: the server boots with the adapter enabled against real Redis.
+- **Fail-closed:** in multi-worker cluster mode (detected via `SOCKET_CLUSTER_MODE=true` set in `pm2.config.js`, PM2 `exec_mode=cluster_mode`, or `NODE_APP_INSTANCE>=1` — see `src/utils/clusterMode.js`), a missing/unreachable adapter now **refuses to boot** (`process.exit(1)`) rather than silently degrading. Single-worker/dev still degrades gracefully.
+- **Proven, not asserted:** `tests/integration/socket-cluster.test.js` runs two Socket.IO servers on a shared Redis bus and asserts a broadcast from worker B reaches a client on worker A (real cross-worker delivery). `tests/unit/clusterMode.test.js` covers the fail-closed detection matrix. Full backend suite 236 passing / 26 suites.
 
 ### BLOCKER-2 (Medium) — PM2 app-name / filename inconsistency in the checklist
 `DEPLOY_CHECKLIST.md §2.6` says `pm2 start ecosystem.config.js --env production` and §12 says `pm2 reload usam-hub-backend`, but the actual file is `deploy/pm2.config.js` and the actual app name is `usam-hub-api`. An operator following the checklist verbatim gets "file not found" / "process not found" and a failed deploy or rollback.
