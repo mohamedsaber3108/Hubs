@@ -57,6 +57,7 @@ const OrganizationMember  = require('./OrganizationMember')(sequelize);
 const Offer               = require('./Offer')(sequelize);
 const PromoCode           = require('./PromoCode')(sequelize);
 const OfferRedemption     = require('./OfferRedemption')(sequelize);
+const PartnershipRequest  = require('./PartnershipRequest')(sequelize);
 
 // ─── Associations ─────────────────────────────────────────────────────────────
 
@@ -226,6 +227,12 @@ OfferRedemption.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 OfferRedemption.belongsTo(PromoCode, { foreignKey: 'promo_code_id', as: 'promoCode' });
 User.hasMany(OfferRedemption, { foreignKey: 'user_id', as: 'offerRedemptions' });
 
+// Partnerships (directed org <-> org)
+Organization.hasMany(PartnershipRequest, { foreignKey: 'requester_org_id', as: 'sentPartnerships' });
+Organization.hasMany(PartnershipRequest, { foreignKey: 'recipient_org_id', as: 'receivedPartnerships' });
+PartnershipRequest.belongsTo(Organization, { foreignKey: 'requester_org_id', as: 'requesterOrg' });
+PartnershipRequest.belongsTo(Organization, { foreignKey: 'recipient_org_id', as: 'recipientOrg' });
+
 module.exports = {
   sequelize,
   Sequelize,
@@ -246,4 +253,5 @@ module.exports = {
   UserSkill, UserExperience, UserEducation,
   Follow,
   Organization, OrganizationMember, Offer, PromoCode, OfferRedemption,
+  PartnershipRequest,
 };

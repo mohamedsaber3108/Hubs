@@ -1,6 +1,6 @@
 'use strict';
 const { Op } = require('sequelize');
-const { Organization, OrganizationMember, User, Offer } = require('../models');
+const { Organization, OrganizationMember, User, Offer, PartnershipRequest } = require('../models');
 const ApiError    = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const { paginate } = require('../utils/paginate');
@@ -99,8 +99,112 @@ const getMembers = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ─── Partnerships ──────────────────────────────────────────────────────────────
+const orgCardAttrs = ['id', 'slug', 'name', 'logo_url', 'is_verified'];
+
+// POST /organizations/:slug/partnerships — managers of :slug request a
+// partnership with { target_slug }.
+const requestPartnership = async (req, res, next) => {
+  try {
+    const org = await Organization.findOne({ where: { slug: req.params.slug } });
+    if (!org) return next(ApiError.notFound('Organization not found'));
+    const role = await memberRole(org.id, req.user);
+    if (!canManage(role, req.user)) return next(ApiError.forbidden('Organization managers only'));
+
+    const target = await Organization.findOne({ where: { slug: req.body.target_slug } });
+    if (!target) return next(ApiError.notFound('Target organization not found'));
+    if (target.id === org.id) return next(ApiError.badRequest('An organization cannot partner with itself'));
+
+    // Reject if a request already exists in EITHER direction (avoid duplicates /
+    // crossed invites).
+    const existing = await PartnershipRequest.findOne({
+      where: {
+        [Op.or]: [
+          { requester_org_id: org.id, recipient_org_id: target.id },
+          { requester_org_id: target.id, recipient_org_id: org.id },
+        ],
+        status: { [Op.in]: ['pending', 'accepted'] },
+      },
+    });
+    if (existing) return next(ApiError.conflict('A partnership or pending request already exists between these organizations'));
+
+    const pr = await PartnershipRequest.create({
+      requester_org_id: org.id,
+      recipient_org_id: target.id,
+      created_by: req.user.id,
+      message: req.body.message || null,
+      status: 'pending',
+    });
+    return ApiResponse.created(res, { partnership: pr }, 'Partnership request sent');
+  } catch (err) { next(err); }
+};
+
+// GET /organizations/:slug/partnerships — managers see this org's partnerships
+// (sent + received), optionally filtered by status.
+const listPartnerships = async (req, res, next) => {
+  try {
+    const org = await Organization.findOne({ where: { slug: req.params.slug } });
+    if (!org) return next(ApiError.notFound('Organization not found'));
+    const role = await memberRole(org.id, req.user);
+    if (!canManage(role, req.user)) return next(ApiError.forbidden('Organization managers only'));
+
+    const where = {
+      [Op.or]: [{ requester_org_id: org.id }, { recipient_org_id: org.id }],
+    };
+    if (req.query.status) where.status = req.query.status;
+
+    const rows = await PartnershipRequest.findAll({
+      where, order: [['created_at', 'DESC']],
+      include: [
+        { model: Organization, as: 'requesterOrg', attributes: orgCardAttrs },
+        { model: Organization, as: 'recipientOrg', attributes: orgCardAttrs },
+      ],
+    });
+    // Annotate direction relative to the viewing org.
+    const data = rows.map((r) => ({ ...r.toJSON(), direction: r.requester_org_id === org.id ? 'outgoing' : 'incoming' }));
+    return ApiResponse.success(res, { partnerships: data });
+  } catch (err) { next(err); }
+};
+
+// PATCH /organizations/:slug/partnerships/:id — the RECIPIENT org's managers
+// accept/decline a pending request, or either side ends an accepted one.
+const respondPartnership = async (req, res, next) => {
+  try {
+    const org = await Organization.findOne({ where: { slug: req.params.slug } });
+    if (!org) return next(ApiError.notFound('Organization not found'));
+    const role = await memberRole(org.id, req.user);
+    if (!canManage(role, req.user)) return next(ApiError.forbidden('Organization managers only'));
+
+    const pr = await PartnershipRequest.findByPk(req.params.id);
+    if (!pr) return next(ApiError.notFound('Partnership request not found'));
+    // The acting org must be a party to this request.
+    if (pr.requester_org_id !== org.id && pr.recipient_org_id !== org.id) {
+      return next(ApiError.forbidden('Your organization is not party to this request'));
+    }
+
+    const { action } = req.body; // accept | decline | end
+    if (action === 'accept' || action === 'decline') {
+      if (pr.status !== 'pending') return next(ApiError.badRequest('Only pending requests can be responded to'));
+      // Only the RECIPIENT may accept/decline.
+      if (pr.recipient_org_id !== org.id) return next(ApiError.forbidden('Only the recipient organization can respond'));
+      await pr.update({
+        status: action === 'accept' ? 'accepted' : 'declined',
+        responded_by: req.user.id,
+        responded_at: new Date(),
+      });
+    } else if (action === 'end') {
+      if (pr.status !== 'accepted') return next(ApiError.badRequest('Only an accepted partnership can be ended'));
+      await pr.update({ status: 'ended', responded_by: req.user.id, responded_at: new Date() });
+    } else {
+      return next(ApiError.badRequest('Invalid action'));
+    }
+    return ApiResponse.success(res, { partnership: pr }, 'Partnership updated');
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   listOrganizations, getOrganization, createOrganization, updateOrganization, getMembers,
+  requestPartnership, listPartnerships, respondPartnership,
   // exported for reuse by the offer controller + tests
   _internal: { memberRole, canManage, uniqueSlug },
 };

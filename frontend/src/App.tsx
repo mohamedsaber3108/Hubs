@@ -29,6 +29,8 @@ import Challenges from "./pages/Challenges";
 import ChallengeDetail from "./pages/ChallengeDetail";
 import Opportunities from "./pages/Opportunities";
 import Offers from "./pages/Offers";
+import Organizations from "./pages/Organizations";
+import OrganizationDetail from "./pages/OrganizationDetail";
 import Resources from "./pages/Resources";
 import Leaderboard from "./pages/Leaderboard";
 import Discover from "./pages/Discover";
@@ -79,6 +81,8 @@ const App = () => (
               <Route path="/opportunities"           element={<Opportunities />} />
               <Route path="/:community/offers"        element={<Offers />} />
               <Route path="/offers"                   element={<Offers />} />
+              <Route path="/organizations"            element={<Organizations />} />
+              <Route path="/organizations/:slug"      element={<OrganizationDetail />} />
               <Route path="/:community/resources"    element={<Resources />} />
               <Route path="/resources"               element={<Resources />} />
               <Route path="/:community/leaderboard"  element={<Leaderboard />} />

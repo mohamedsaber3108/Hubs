@@ -92,3 +92,49 @@ export function useAddPromoCodeMutation(offerId: number) {
     onError: (err: any) => toast.error(err?.response?.data?.message || 'Could not add promo code'),
   });
 }
+
+// ─── Partnerships ─────────────────────────────────────────────────────────────
+export function usePartnerships(slug: string) {
+  return useQuery({
+    queryKey: queryKeys.organizationPartnerships(slug),
+    queryFn: () => organizationService.listPartnerships(slug),
+    enabled: !!slug,
+  });
+}
+
+export function useRequestPartnershipMutation(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { target_slug: string; message?: string }) => organizationService.requestPartnership(slug, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.organizationPartnerships(slug) });
+      toast.success('Partnership request sent');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Could not send request'),
+  });
+}
+
+export function useRespondPartnershipMutation(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: number; action: 'accept' | 'decline' | 'end' }) =>
+      organizationService.respondPartnership(slug, id, action),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.organizationPartnerships(slug) });
+      toast.success('Partnership updated');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Could not update partnership'),
+  });
+}
+
+export function useSubmitOfferMutationById() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => offerService.submit(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['organizations'] });
+      toast.success('Submitted for review');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Could not submit offer'),
+  });
+}

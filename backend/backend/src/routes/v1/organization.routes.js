@@ -17,4 +17,9 @@ router.get ('/:slug/members', authenticate, orgCtrl.getMembers);
 router.get ('/:slug/offers', authenticate, offerCtrl.listOrgOffers);
 router.post('/:slug/offers', authenticate, validate(schema.createOffer), offerCtrl.createOffer);
 
+// Partnerships (managers)
+router.get  ('/:slug/partnerships',      authenticate, orgCtrl.listPartnerships);
+router.post ('/:slug/partnerships',      authenticate, validate(schema.requestPartnership), orgCtrl.requestPartnership);
+router.patch('/:slug/partnerships/:id',  authenticate, validate(schema.respondPartnership), orgCtrl.respondPartnership);
+
 module.exports = router;

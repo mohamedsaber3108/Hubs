@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import type { ApiResponse, PaginatedResponse, Organization, Offer } from '@/lib/types';
+import type { ApiResponse, PaginatedResponse, Organization, Offer, PartnershipRequest } from '@/lib/types';
 
 export const organizationService = {
   list: (params?: object) =>
@@ -20,4 +20,14 @@ export const organizationService = {
 
   createOffer: (slug: string, data: object) =>
     api.post<ApiResponse<{ offer: Offer }>>(`/organizations/${slug}/offers`, data).then((r) => r.data.data.offer),
+
+  // Partnerships
+  listPartnerships: (slug: string) =>
+    api.get<ApiResponse<{ partnerships: PartnershipRequest[] }>>(`/organizations/${slug}/partnerships`).then((r) => r.data.data.partnerships),
+
+  requestPartnership: (slug: string, data: { target_slug: string; message?: string }) =>
+    api.post<ApiResponse<{ partnership: PartnershipRequest }>>(`/organizations/${slug}/partnerships`, data).then((r) => r.data.data.partnership),
+
+  respondPartnership: (slug: string, id: number, action: 'accept' | 'decline' | 'end') =>
+    api.patch<ApiResponse<{ partnership: PartnershipRequest }>>(`/organizations/${slug}/partnerships/${id}`, { action }).then((r) => r.data.data.partnership),
 };

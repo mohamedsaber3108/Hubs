@@ -78,6 +78,16 @@ const createPromoCode = Joi.object({
   expires_at: Joi.date().iso().allow(null),
 });
 
+// ─── Partnerships ─────────────────────────────────────────────────────────────
+const requestPartnership = Joi.object({
+  target_slug: Joi.string().required(),
+  message:     Joi.string().max(2000).allow('', null),
+});
+
+const respondPartnership = Joi.object({
+  action: Joi.string().valid('accept', 'decline', 'end').required(),
+});
+
 // ─── Admin review ─────────────────────────────────────────────────────────────
 const reviewOffer = Joi.object({
   decision: Joi.string().valid('approved', 'rejected').required(),
@@ -88,4 +98,5 @@ module.exports = {
   PERSONAS,
   createOrganization, updateOrganization,
   createOffer, updateOffer, createPromoCode, reviewOffer,
+  requestPartnership, respondPartnership,
 };

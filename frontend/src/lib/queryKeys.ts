@@ -67,6 +67,7 @@ export const queryKeys = {
   organizations: (params?: object) => ['organizations', params] as const,
   organization: (slug: string) => ['organizations', slug] as const,
   organizationOffers: (slug: string) => ['organizations', slug, 'offers'] as const,
+  organizationPartnerships: (slug: string) => ['organizations', slug, 'partnerships'] as const,
 
   // Onboarding
   onboardingStatus: () => ['onboarding'] as const,

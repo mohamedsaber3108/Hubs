@@ -165,6 +165,20 @@ export interface RedeemResult {
   redemption_instructions: string | null;
 }
 
+export type PartnershipStatus = 'pending' | 'accepted' | 'declined' | 'ended';
+
+export interface PartnershipRequest {
+  id: number;
+  requester_org_id: number;
+  recipient_org_id: number;
+  message: string | null;
+  status: PartnershipStatus;
+  direction?: 'incoming' | 'outgoing';
+  requesterOrg?: Pick<Organization, 'id' | 'slug' | 'name' | 'logo_url' | 'is_verified'>;
+  recipientOrg?: Pick<Organization, 'id' | 'slug' | 'name' | 'logo_url' | 'is_verified'>;
+  created_at: string;
+}
+
 // ─── Post / Feed ─────────────────────────────────────────────────────────────
 export interface Post {
   id: number;
