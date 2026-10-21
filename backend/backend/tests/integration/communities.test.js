@@ -1,7 +1,7 @@
 'use strict';
 const request = require('supertest');
 const app     = require('../../src/app');
-const { createUserAndLogin, getSeedCommunity } = require('../helpers');
+const { createUserAndLogin, getSeedCommunity, getSeedCommunities, createVerifiedUser, loginUser } = require('../helpers');
 
 describe('Communities API', () => {
   let token, user;
@@ -63,6 +63,72 @@ describe('Communities API', () => {
         .delete('/api/v1/communities/freelancespace/leave')
         .set('Authorization', `Bearer ${token}`);
       expect([200, 404]).toContain(res.status);
+    });
+  });
+
+  describe('GET /api/v1/communities/recommended', () => {
+    beforeAll(async () => {
+      await getSeedCommunities(); // ensure all four product communities exist
+    });
+
+    it('works anonymously and returns communities (non-personalized)', async () => {
+      const res = await request(app).get('/api/v1/communities/recommended');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data.communities)).toBe(true);
+      expect(res.body.data.communities.length).toBeGreaterThan(0);
+      expect(res.body.data.personalized).toBe(false);
+      // every community carries recommendation annotations
+      const first = res.body.data.communities[0];
+      expect(first).toHaveProperty('is_member');
+      expect(first).toHaveProperty('match_score');
+      expect(first).toHaveProperty('matched_personas');
+    });
+
+    it('does not capture "recommended" as a community slug', async () => {
+      // Guards the route-ordering: /recommended must resolve to the
+      // recommendations handler, not getOne looking up a slug named
+      // "recommended" (which would 404).
+      const res = await request(app).get('/api/v1/communities/recommended');
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveProperty('personalized');
+    });
+
+    it('personalizes ranking for a user with personas', async () => {
+      const personaUser = await createVerifiedUser({ professional_roles: ['student'] });
+      const personaToken = await loginUser(personaUser.email);
+
+      const res = await request(app)
+        .get('/api/v1/communities/recommended')
+        .set('Authorization', `Bearer ${personaToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.personalized).toBe(true);
+      expect(res.body.data.personas).toContain('student');
+
+      // studentzone should rank first for a student persona (affinity 3),
+      // ahead of communities with no affinity for this persona.
+      const top = res.body.data.communities[0];
+      expect(top.slug).toBe('studentzone');
+      expect(top.match_score).toBeGreaterThan(0);
+      expect(top.matched_personas).toContain('student');
+      expect(top.reason).toMatch(/student/i);
+    });
+
+    it('annotates membership state in recommendations', async () => {
+      const u = await createVerifiedUser({ professional_roles: ['freelancer'] });
+      const t = await loginUser(u.email);
+      await request(app)
+        .post('/api/v1/communities/freelancespace/join')
+        .set('Authorization', `Bearer ${t}`);
+
+      const res = await request(app)
+        .get('/api/v1/communities/recommended')
+        .set('Authorization', `Bearer ${t}`);
+
+      expect(res.status).toBe(200);
+      const fs = res.body.data.communities.find((c) => c.slug === 'freelancespace');
+      expect(fs).toBeDefined();
+      expect(fs.is_member).toBe(true);
     });
   });
 });

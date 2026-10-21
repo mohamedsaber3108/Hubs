@@ -60,4 +60,74 @@ const getMembers = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getAll, getOne, join, leave, getMembers };
+// ─── Persona → community affinity ──────────────────────────────────────────────
+// Maps each professional persona to the community slugs it most aligns with.
+// Used to recommend communities to a user based on the personas they chose
+// during onboarding (users.professional_roles). Kept as a plain, explainable
+// mapping rather than an opaque model — easy to audit and adjust per business
+// rules, and it drives the differentiated experience the product requires.
+const PERSONA_COMMUNITY_AFFINITY = {
+  freelancer:   { freelancespace: 3, launchpad: 1 },
+  student:      { studentzone: 3, launchpad: 2 },
+  entrepreneur: { launchpad: 3, freelancespace: 1 },
+  recruiter:    { hrconnect: 3 },
+  employer:     { hrconnect: 3, launchpad: 1 },
+  job_seeker:   { launchpad: 3, hrconnect: 1, freelancespace: 1 },
+  mentor:       { hrconnect: 1, studentzone: 1, launchpad: 1, freelancespace: 1 },
+};
+
+// GET /communities/recommended — persona-aware community recommendations.
+// Scores every active community by the viewer's personas, annotates whether
+// they're already a member, and returns communities ranked by relevance.
+// Falls back to member-count ordering for users with no personas yet.
+const getRecommended = async (req, res, next) => {
+  try {
+    const communities = await Community.findAll({ where: { is_active: true } });
+
+    let memberIds = new Set();
+    let personas = [];
+    if (req.user) {
+      const [memberships, fullUser] = await Promise.all([
+        CommunityMembership.findAll({ where: { user_id: req.user.id }, attributes: ['community_id'] }),
+        User.findByPk(req.user.id, { attributes: ['professional_roles'] }),
+      ]);
+      memberIds = new Set(memberships.map((m) => m.community_id));
+      personas = Array.isArray(fullUser && fullUser.professional_roles) ? fullUser.professional_roles : [];
+    }
+
+    const scored = communities.map((c) => {
+      const data = c.toJSON();
+      let score = 0;
+      const matchedPersonas = [];
+      for (const persona of personas) {
+        const affinity = PERSONA_COMMUNITY_AFFINITY[persona];
+        if (affinity && affinity[c.slug]) {
+          score += affinity[c.slug];
+          matchedPersonas.push(persona);
+        }
+      }
+      return {
+        ...data,
+        is_member: memberIds.has(c.id),
+        match_score: score,
+        matched_personas: matchedPersonas,
+        // "why we recommend this" — human-readable, drives differentiated UX
+        reason: matchedPersonas.length
+          ? `Recommended for your ${matchedPersonas.join(', ')} profile`
+          : null,
+      };
+    });
+
+    // Rank: personalized score first (when the user has personas), then by
+    // members_count as a stable, sensible default/tiebreaker.
+    scored.sort((a, b) => (b.match_score - a.match_score) || (b.members_count - a.members_count));
+
+    return ApiResponse.success(res, {
+      communities: scored,
+      personalized: personas.length > 0,
+      personas,
+    });
+  } catch (err) { next(err); }
+};
+
+module.exports = { getAll, getOne, join, leave, getMembers, getRecommended, PERSONA_COMMUNITY_AFFINITY };

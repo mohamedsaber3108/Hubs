@@ -47,6 +47,27 @@ async function getSeedCommunity() {
   return community;
 }
 
+// Seeds the four product communities used by persona-aware recommendation
+// tests. Idempotent (findOrCreate by slug) so it is safe across suites that
+// share the test DB. Returns the communities keyed by slug.
+async function getSeedCommunities() {
+  const specs = [
+    { slug: 'freelancespace', name: 'FreelanceSpace', emoji: '💼', tagline: 'For freelancers',    accent_color: '#6366f1' },
+    { slug: 'studentzone',    name: 'StudentZone',    emoji: '🎓', tagline: 'For students',       accent_color: '#10b981' },
+    { slug: 'hrconnect',      name: 'HR Connect',     emoji: '🧑‍💼', tagline: 'For recruiters',    accent_color: '#f59e0b' },
+    { slug: 'launchpad',      name: 'LaunchPad',      emoji: '🚀', tagline: 'For entrepreneurs',  accent_color: '#ef4444' },
+  ];
+  const out = {};
+  for (const spec of specs) {
+    const [community] = await Community.findOrCreate({
+      where: { slug: spec.slug },
+      defaults: { ...spec, description: `${spec.name} test community`, is_active: true, members_count: 0 },
+    });
+    out[spec.slug] = community;
+  }
+  return out;
+}
+
 async function createAdmin(overrides = {}) {
   const defaults = {
     email:         `admin_${TS}_${Math.random().toString(36).slice(2,6)}@usam.hub`,
@@ -63,4 +84,4 @@ async function loginAdmin(email, password = 'AdminPass123!') {
   return res.body.data?.access_token;
 }
 
-module.exports = { createVerifiedUser, loginUser, createUserAndLogin, getSeedCommunity, createAdmin, loginAdmin };
+module.exports = { createVerifiedUser, loginUser, createUserAndLogin, getSeedCommunity, getSeedCommunities, createAdmin, loginAdmin };
