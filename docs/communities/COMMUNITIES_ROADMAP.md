@@ -6,6 +6,13 @@ Priority meaning: **P0** = fix broken foundations + close the biggest "generic v
 
 ---
 
+## Progress log
+
+- **P0-1 / P0-3 — DONE.** Onboarding fixed (migration `20240101000017`; GET/POST 200), `users.professional_roles` persona field live. Frontend onboarding now captures personas (step 2 of 5) and sends `professional_roles` + a correctly-mapped `experience_level`. Commits incl. `cd55a55`.
+- **P1-1 (recommendations portion) — DONE.** `GET /communities/recommended` ranks active communities by the viewer's personas via an explainable `PERSONA_COMMUNITY_AFFINITY` map, annotates membership + a human-readable reason, and falls back to member-count ordering for anonymous/no-persona viewers. Communities page consumes it ("Recommended for you", reason chips, highlight ring); Dashboard defaults the active space to the top recommended community. Backend `66a3e8f`, frontend `cd55a55`. 208 backend tests green, FE build + vitest green. **Still open in P1-1:** replacing the hardcoded `Dashboard.tsx` mock content panels with real persona-filtered data.
+
+---
+
 ## P0 — Fix the foundation (no new product surface until these pass)
 
 ### P0-1. Fix the broken onboarding / persona-capture flow
