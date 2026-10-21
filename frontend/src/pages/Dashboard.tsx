@@ -12,6 +12,9 @@ import NotificationPanel from "@/components/NotificationPanel";
 import { COMMUNITIES } from "@/lib/communities";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRecommendedCommunities } from "@/hooks/api/useCommunities";
+import {
+  UpcomingEventsWidget, OpportunitiesWidget, ChallengesWidget, PerksWidget, LeaderboardWidget,
+} from "@/components/dashboard/DashboardWidgets";
 
 import { Button } from "@/components/ui/button";
 
@@ -74,255 +77,74 @@ const WELCOME_MESSAGES: Record<string, (name: string) => string> = {
   launchpad: (n) => `Hey ${n} 👋 Ready to level up today?`,
 };
 
-function FreelanceContent() {
+// Each community's dashboard composes the SAME live, community-scoped widgets
+// (real API data — events, opportunities, challenges, perks, leaderboard) but
+// in a DIFFERENT arrangement + emphasis, so a recruiter and a student see
+// genuinely different, data-backed home experiences. All data is fetched by
+// the widgets themselves (DashboardWidgets.tsx), scoped to `community`.
+
+function FreelanceContent({ community }: { community: string }) {
   return (
     <div className="space-y-6 page-enter">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Active Gigs", value: "12", color: "text-freelance" },
-          { label: "Proposals Sent", value: "8", color: "text-primary-glow" },
-          { label: "Earnings (MTD)", value: "$3,240", color: "text-launchpad" },
-          { label: "Rating", value: "4.9★", color: "text-freelance" },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
-            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-sm text-muted-foreground mt-1">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">🏆 Active Challenge</h3>
-          <div className="p-4 rounded-lg bg-freelance/5 border border-freelance/20">
-            <div className="font-medium text-foreground">Design a Community Logo</div>
-            <div className="text-sm text-muted-foreground mt-1">Deadline in 3 days</div>
-            <div className="w-full h-2 bg-muted rounded-full mt-3">
-              <div className="h-full bg-freelance rounded-full" style={{ width: "65%" }} />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">💼 Recommended Opportunities</h3>
-          {["Senior UI Designer — Remote", "Brand Identity — Dubai", "React Developer — Cairo"].map((opp) => (
-            <div key={opp} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-              <span className="text-sm text-foreground">{opp}</span>
-              <Button variant="ghost" size="sm" className="text-primary-glow">View</Button>
-            </div>
-          ))}
-        </div>
+        <OpportunitiesWidget community={community} title="Gigs & Projects" />
+        <ChallengesWidget community={community} />
       </div>
-
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">📅 Upcoming Events</h3>
-          {[{ name: "Freelancer Meetup Dubai", date: "Mar 15" }, { name: "Design Sprint Workshop", date: "Mar 22" }].map((ev) => (
-            <div key={ev.name} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-              <span className="text-sm text-foreground">{ev.name}</span>
-              <span className="text-xs text-muted-foreground">{ev.date}</span>
-            </div>
-          ))}
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">👥 Suggested Connections</h3>
-          {[{ name: "Ahmed K.", role: "React Developer" }, { name: "Yasmin E.", role: "Copywriter" }].map((conn) => (
-            <div key={conn.name} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-              <div>
-                <div className="text-sm font-medium text-foreground">{conn.name}</div>
-                <div className="text-xs text-muted-foreground">{conn.role}</div>
-              </div>
-              <Button variant="outline" size="sm">Connect</Button>
-            </div>
-          ))}
-        </div>
+        <PerksWidget community={community} />
+        <UpcomingEventsWidget community={community} />
       </div>
     </div>
   );
 }
 
-function StudentContent() {
+function StudentContent({ community }: { community: string }) {
   return (
     <div className="space-y-6 page-enter">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Your Rank", value: "#12", color: "text-primary-glow" },
-          { label: "Points", value: "2,900", color: "text-launchpad" },
-          { label: "Events Joined", value: "31", color: "text-hrconnect" },
-          { label: "Club Members", value: "156", color: "text-freelance" },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
-            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-sm text-muted-foreground mt-1">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">🏆 Upcoming Competition</h3>
-          <div className="p-4 rounded-lg bg-primary-glow/5 border border-primary-glow/20">
-            <div className="font-medium text-foreground">Arab Innovation Challenge 2025</div>
-            <div className="text-sm text-muted-foreground mt-1">Registration closes in 5 days</div>
-            <Button size="sm" className="mt-3 bg-primary-glow text-primary-foreground">Register</Button>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">📢 New Initiative</h3>
-          <div className="p-4 rounded-lg bg-secondary">
-            <div className="font-medium text-foreground">Mental Health Awareness Week</div>
-            <div className="text-sm text-muted-foreground mt-1">AUB Student Council</div>
-            <Button variant="outline" size="sm" className="mt-3">Learn More</Button>
-          </div>
-        </div>
+        <ChallengesWidget community={community} title="Competitions" />
+        <UpcomingEventsWidget community={community} />
       </div>
-
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h3 className="font-semibold text-foreground mb-4">🏅 Leaderboard (This Week)</h3>
-        {[
-          { rank: 1, name: "Layla M.", pts: 450 },
-          { rank: 2, name: "Omar F.", pts: 380 },
-          { rank: 3, name: "Nour H.", pts: 320 },
-        ].map((entry) => (
-          <div key={entry.rank} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${entry.rank === 1 ? "bg-freelance/10 text-freelance" : "bg-muted text-muted-foreground"}`}>
-              {entry.rank}
-            </div>
-            <span className="text-sm font-medium text-foreground flex-1">{entry.name}</span>
-            <span className="text-sm text-muted-foreground">{entry.pts} pts</span>
-          </div>
-        ))}
+      <div className="grid gap-6 md:grid-cols-2">
+        <LeaderboardWidget community={community} />
+        <PerksWidget community={community} />
       </div>
     </div>
   );
 }
 
-function HRContent() {
+function HRContent({ community }: { community: string }) {
   return (
     <div className="space-y-6 page-enter">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Job Posts", value: "6", color: "text-hrconnect" },
-          { label: "Applications", value: "142", color: "text-primary-glow" },
-          { label: "Interviews", value: "18", color: "text-launchpad" },
-          { label: "Hires (MTD)", value: "3", color: "text-freelance" },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
-            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-sm text-muted-foreground mt-1">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h3 className="font-semibold text-foreground mb-2">Share an HR insight...</h3>
-        <textarea
-          className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground input-glow focus:outline-none resize-none text-sm"
-          rows={3}
-          placeholder="What's on your mind?"
-        />
-        <Button size="sm" className="mt-2 bg-primary-glow text-primary-foreground">Post</Button>
-      </div>
-
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">🔥 Trending HR Topic</h3>
-          <div className="p-4 rounded-lg bg-hrconnect/5 border border-hrconnect/20">
-            <div className="font-medium text-foreground">AI in Recruitment: Friend or Foe?</div>
-            <div className="text-sm text-muted-foreground mt-1">47 comments · 12 shares</div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">🎓 Upcoming Webinar</h3>
-          <div className="p-4 rounded-lg bg-secondary">
-            <div className="font-medium text-foreground">Building Employer Brand in MENA</div>
-            <div className="text-sm text-muted-foreground mt-1">Mar 18 · 2:00 PM GST</div>
-            <Button variant="outline" size="sm" className="mt-3">Register</Button>
-          </div>
-        </div>
+        <OpportunitiesWidget community={community} title="Open Roles You Posted" />
+        <UpcomingEventsWidget community={community} />
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <ChallengesWidget community={community} title="Talent Challenges" />
+        <PerksWidget community={community} />
       </div>
     </div>
   );
 }
 
-function LaunchPadContent() {
+function LaunchPadContent({ community }: { community: string }) {
   return (
     <div className="space-y-6 page-enter">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Events This Month", value: "8", color: "text-launchpad" },
-          { label: "Connections", value: "98", color: "text-primary-glow" },
-          { label: "Skills Gained", value: "12", color: "text-hrconnect" },
-          { label: "Points", value: "1,200", color: "text-freelance" },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
-            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-sm text-muted-foreground mt-1">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h3 className="font-semibold text-foreground mb-4">🧭 Mentor of the Week</h3>
-        <div className="flex items-center gap-4 p-4 rounded-lg bg-launchpad/5 border border-launchpad/20">
-          <div className="w-14 h-14 rounded-full bg-launchpad/20 flex items-center justify-center text-2xl">🌟</div>
-          <div>
-            <div className="font-medium text-foreground">Ahmed Khalil</div>
-            <div className="text-sm text-muted-foreground">Full-Stack Developer · 567 connections</div>
-            <Button size="sm" className="mt-2 bg-launchpad text-primary-foreground hover:bg-launchpad/90">Request Mentorship</Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h3 className="font-semibold text-foreground mb-4">📅 Upcoming Events</h3>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {[
-            { name: "Career Fair 2025", date: "Mar 12", color: "bg-launchpad/10 border-launchpad/20" },
-            { name: "Startup Pitch Night", date: "Mar 18", color: "bg-freelance/10 border-freelance/20" },
-            { name: "Resume Workshop", date: "Mar 22", color: "bg-hrconnect/10 border-hrconnect/20" },
-            { name: "Networking Mixer", date: "Mar 28", color: "bg-primary-glow/10 border-primary-glow/20" },
-          ].map((ev) => (
-            <div key={ev.name} className={`min-w-[160px] p-4 rounded-lg border ${ev.color} shrink-0`}>
-              <div className="text-sm font-medium text-foreground">{ev.name}</div>
-              <div className="text-xs text-muted-foreground mt-1">{ev.date}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">🎯 Opportunities for You</h3>
-          {["Junior Developer — TechCo", "Data Intern — DataHub", "Marketing Assistant — BrandX"].map((opp) => (
-            <div key={opp} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-              <span className="text-sm text-foreground">{opp}</span>
-              <Button variant="ghost" size="sm" className="text-primary-glow">Apply</Button>
-            </div>
-          ))}
-        </div>
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">🚀 My Journey</h3>
-          <div className="space-y-3">
-            {[
-              { text: "Completed: Interview Prep", done: true },
-              { text: "In Progress: Build Portfolio", done: false },
-              { text: "Next: Network with 5 professionals", done: false },
-            ].map((step, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step.done ? "bg-launchpad text-primary-foreground" : "border border-border"}`}>
-                  {step.done && "✓"}
-                </div>
-                <span className={step.done ? "text-muted-foreground line-through" : "text-foreground"}>{step.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <OpportunitiesWidget community={community} title="Internships & Entry Roles" />
+        <UpcomingEventsWidget community={community} />
       </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <ChallengesWidget community={community} />
+        <PerksWidget community={community} />
+      </div>
+      <LeaderboardWidget community={community} />
     </div>
   );
 }
 
-const CONTENT_MAP: Record<string, () => JSX.Element> = {
+const CONTENT_MAP: Record<string, (props: { community: string }) => JSX.Element> = {
   freelancespace: FreelanceContent,
   studentzone: StudentContent,
   hrconnect: HRContent,
@@ -538,7 +360,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <ContentComponent />
+          <ContentComponent community={activeCommunity} />
         </main>
       </div>
     </div>
