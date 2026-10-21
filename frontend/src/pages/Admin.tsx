@@ -10,6 +10,7 @@ import AnalyticsPanel from '@/admin/pages/AnalyticsPanel';
 import SettingsPanel  from '@/admin/pages/SettingsPanel';
 import SystemPanel    from '@/admin/pages/SystemPanel';
 import LogsPanel      from '@/admin/pages/LogsPanel';
+import OffersPanel    from '@/admin/pages/OffersPanel';
 import { adminSystemService } from '@/admin/services/adminSystem.service';
 
 // Separate QueryClient for admin — isolated cache
@@ -43,6 +44,7 @@ function AdminDashboard() {
     overview:  <OverviewPanel />,
     users:     <UsersPanel />,
     content:   <ContentPanel />,
+    offers:    <OffersPanel />,
     analytics: <AnalyticsPanel />,
     settings:  <SettingsPanel />,
     system:    <SystemPanel />,

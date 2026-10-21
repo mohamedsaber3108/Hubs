@@ -57,6 +57,17 @@ export const queryKeys = {
   // Notifications
   notifications: () => ['notifications'] as const,
 
+  // Offers & Perks
+  offers: (params?: object) => ['offers', params] as const,
+  offer: (id: number) => ['offers', id] as const,
+  offerPromoCodes: (id: number) => ['offers', id, 'promo-codes'] as const,
+  myRedemptions: () => ['offers', 'redemptions', 'me'] as const,
+
+  // Organizations
+  organizations: (params?: object) => ['organizations', params] as const,
+  organization: (slug: string) => ['organizations', slug] as const,
+  organizationOffers: (slug: string) => ['organizations', slug, 'offers'] as const,
+
   // Onboarding
   onboardingStatus: () => ['onboarding'] as const,
 

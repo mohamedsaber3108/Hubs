@@ -13,3 +13,5 @@ export { messageService } from './message.service';
 export { searchService } from './search.service';
 export { nomadService } from './nomad.service';
 export { onboardingService } from './onboarding.service';
+export { offerService } from './offer.service';
+export { organizationService } from './organization.service';

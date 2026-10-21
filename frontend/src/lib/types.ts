@@ -87,6 +87,84 @@ export interface RecommendationsResult {
   personas: ProfessionalRole[];
 }
 
+// ─── Organizations & Offers (Track B-8) ────────────────────────────────────────
+export interface Organization {
+  id: number;
+  slug: string;
+  name: string;
+  tagline: string | null;
+  description: string | null;
+  logo_url: string | null;
+  website: string | null;
+  industry: string | null;
+  is_verified: boolean;
+  is_active: boolean;
+  owner?: UserMinimal;
+  created_at: string;
+}
+
+export type OfferCategory = 'discount' | 'freebie' | 'trial' | 'cashback' | 'service' | 'event' | 'course' | 'other';
+export type OfferStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'archived';
+export type DiscountType = 'percentage' | 'fixed' | 'bogo' | 'none';
+export type RedemptionType = 'code' | 'url' | 'manual';
+
+export interface Offer {
+  id: number;
+  organization_id: number;
+  title: string;
+  description: string;
+  category: OfferCategory;
+  discount_type: DiscountType;
+  discount_value: string | number | null;
+  currency: string;
+  redemption_type: RedemptionType;
+  redemption_url: string | null;
+  redemption_instructions: string | null;
+  eligible_personas: ProfessionalRole[];
+  target_communities: string[];
+  status: OfferStatus;
+  rejection_reason: string | null;
+  total_limit: number | null;
+  per_user_limit: number | null;
+  redemptions_count: number;
+  starts_at: string | null;
+  expires_at: string | null;
+  is_featured: boolean;
+  organization?: Pick<Organization, 'id' | 'slug' | 'name' | 'logo_url' | 'is_verified'>;
+  // Annotations present on catalog / detail responses:
+  eligible?: boolean;
+  sold_out?: boolean;
+  created_at: string;
+}
+
+export interface PromoCode {
+  id: number;
+  offer_id: number;
+  code: string;
+  max_uses: number | null;
+  uses_count: number;
+  expires_at: string | null;
+  is_active: boolean;
+}
+
+export interface OfferRedemption {
+  id: number;
+  offer_id: number;
+  user_id: number;
+  code_snapshot: string | null;
+  status: 'redeemed' | 'used' | 'expired' | 'cancelled';
+  redeemed_at: string;
+  offer?: Offer;
+  created_at: string;
+}
+
+export interface RedeemResult {
+  redemption: OfferRedemption;
+  code: string | null;
+  redemption_url: string | null;
+  redemption_instructions: string | null;
+}
+
 // ─── Post / Feed ─────────────────────────────────────────────────────────────
 export interface Post {
   id: number;

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, FileText, BarChart3, Settings,
   Server, ScrollText, LogOut, ChevronLeft, ChevronRight,
-  Shield, Bell, Menu, X, AlertTriangle
+  Shield, Bell, Menu, X, AlertTriangle, Tag
 } from 'lucide-react';
 import USAMLogo from '@/components/USAMLogo';
 import { useAdminAuth } from '../AdminContext';
@@ -12,6 +12,7 @@ const NAV = [
   { id: 'overview',    label: 'Overview',    icon: LayoutDashboard },
   { id: 'users',       label: 'Users',       icon: Users },
   { id: 'content',     label: 'Content',     icon: FileText },
+  { id: 'offers',      label: 'Offers',      icon: Tag },
   { id: 'analytics',   label: 'Analytics',   icon: BarChart3 },
   { id: 'settings',    label: 'Settings',    icon: Settings },
   { id: 'system',      label: 'System',      icon: Server },

@@ -25,6 +25,7 @@ const SUB_NAV_LINKS: Record<string, { label: string; path: string }[]> = {
     { label: "Events", path: "/events" },
     { label: "Challenges", path: "/challenges" },
     { label: "Opportunities", path: "/opportunities" },
+    { label: "Perks", path: "/offers" },
     { label: "Mentors", path: "/mentors" },
     { label: "Resources", path: "/resources" },
   ],
@@ -35,6 +36,7 @@ const SUB_NAV_LINKS: Record<string, { label: string; path: string }[]> = {
     { label: "Events", path: "/events" },
     { label: "Competitions", path: "/challenges" },
     { label: "Initiatives", path: "/opportunities" },
+    { label: "Perks", path: "/offers" },
     { label: "Leaderboard", path: "/leaderboard" },
     { label: "Nomad AI", path: "/discover" },
     { label: "Resources", path: "/resources" },
@@ -47,6 +49,7 @@ const SUB_NAV_LINKS: Record<string, { label: string; path: string }[]> = {
     { label: "Challenges", path: "/challenges" },
     { label: "Opportunities", path: "/opportunities" },
     { label: "Candidates", path: "/discover" },
+    { label: "Perks", path: "/offers" },
     { label: "Resources", path: "/resources" },
   ],
   launchpad: [
@@ -57,6 +60,7 @@ const SUB_NAV_LINKS: Record<string, { label: string; path: string }[]> = {
     { label: "Mentors", path: "/mentors" },
     { label: "Groups", path: "/groups" },
     { label: "Challenges", path: "/challenges" },
+    { label: "Perks", path: "/offers" },
     { label: "My Journey", path: "/leaderboard" },
   ],
 };
