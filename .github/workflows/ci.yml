@@ -1,0 +1,109 @@
+name: CI
+
+# Continuous integration for USAM Hub (AWS-targeted; no production access).
+# Runs on every push/PR. Uses ISOLATED, ephemeral MySQL + Redis service
+# containers spun up inside the GitHub Actions runner — it never connects to
+# any production database, and no production secrets are referenced. All DB/
+# Redis values here are throwaway CI credentials for the job's lifetime only.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+# Avoid running a project-wide concurrent duplicate for the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Backend: unit + integration against isolated MySQL + Redis ───────────────
+  backend:
+    name: Backend (lint, unit, integration, migrations)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/backend
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root
+          MYSQL_DATABASE: usam_hub_test
+          MYSQL_USER: usam_ci
+          MYSQL_PASSWORD: ci_pass
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -pci_root"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      NODE_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_USER: root
+      DB_PASSWORD: ci_root
+      DB_NAME: usam_hub_test
+      DB_NAME_TEST: usam_hub_test
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: '6379'
+      JWT_ACCESS_SECRET: ci_access_secret_at_least_32_chars_long_xx
+      JWT_REFRESH_SECRET: ci_refresh_secret_at_least_32_chars_long_x
+      JWT_ACCESS_EXPIRES: 15m
+      JWT_REFRESH_EXPIRES: 7d
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/backend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true  # backend has no eslint config yet (tracked); don't hard-fail CI on it
+      - name: Dependency audit (high+ only, non-blocking)
+        run: npm audit --audit-level=high || true
+      - name: Unit tests (no DB needed)
+        run: npm run test:unit
+      - name: Verify migrations apply from an EMPTY database
+        run: npx sequelize-cli db:migrate --env test
+      - name: Verify migrations fully roll back (empty → migrated → empty)
+        run: npx sequelize-cli db:migrate:undo:all --env test
+      - name: Re-apply migrations for integration tests
+        run: npx sequelize-cli db:migrate --env test
+      - name: Integration tests (isolated MySQL + Redis)
+        run: npm run test:integration
+
+  # ─── Frontend: lint, test, build ──────────────────────────────────────────────
+  frontend:
+    name: Frontend (lint, test, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true  # 81 pre-existing lint findings tracked in roadmap; don't hard-fail yet
+      - name: Dependency audit (high+ only, non-blocking)
+        run: npm audit --audit-level=high || true
+      - name: Unit tests
+        run: npm run test
+      - name: Production build
+        run: npm run build
