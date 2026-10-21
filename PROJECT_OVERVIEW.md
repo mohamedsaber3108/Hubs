@@ -58,7 +58,7 @@ m:\HUb_comunites
 
 **Backend:** Node.js ≥20, Express 4.18, Sequelize 6.35 (ORM) over MySQL 8, Redis (ioredis) for cache/token-blacklist/queues, Socket.IO (realtime chat + notifications), Bull + node-cron (jobs), Passport (JWT + Google/GitHub/Facebook/LinkedIn OAuth2), bcrypt, speakeasy/qrcode (admin TOTP 2FA), Multer + Sharp + AWS S3 (uploads), AWS SES + Nodemailer (email), Joi (validation), Helmet/CORS/rate-limit/mongo-sanitize/xss-clean (security), Swagger UI (`/api/docs`), Anthropic Claude API (NomadAI chatbot), Jest + Supertest (tests).
 
-**Infra/deploy target:** Single AWS EC2 instance running the Express app under PM2 behind Nginx, MySQL on RDS, Redis on the same EC2 box. Deploy scripts and a detailed checklist live under `backend/deploy/` and `backend/DEPLOY_CHECKLIST.md`.
+**Infra/deploy target: AWS — CONFIRMED FINAL (see `docs/architecture/ADR-008-aws-infrastructure.md`).** EC2 running the Express app under PM2 (cluster) behind Nginx, React/Vite SPA served as static files by Nginx, MySQL on RDS (SSL enforced), Redis on EC2, S3 for storage, SES for email, Socket.IO for realtime, Let's Encrypt HTTPS. Vercel / Next.js / serverless / PostgreSQL / Cloudflare are explicitly **out of scope**. Deploy scripts + checklist live under `backend/deploy/` and `backend/DEPLOY_CHECKLIST.md`; an evidence-based readiness assessment with the exact remaining blockers is in `docs/deployment/AWS_PRODUCTION_READINESS.md`.
 
 ## 4. How frontend and backend connect
 
