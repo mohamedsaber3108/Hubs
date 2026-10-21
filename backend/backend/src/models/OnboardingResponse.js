@@ -5,6 +5,7 @@ module.exports = (sequelize) => sequelize.define('OnboardingResponse', {
   user_id:          { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true },
   goals:            { type: DataTypes.JSON, defaultValue: [] },
   interests:        { type: DataTypes.JSON, defaultValue: [] },
+  skills:           { type: DataTypes.JSON, defaultValue: [] },
   experience_level: { type: DataTypes.ENUM('beginner','intermediate','expert'), defaultValue: 'beginner' },
   communities:      { type: DataTypes.JSON, defaultValue: [] },
   completed:        { type: DataTypes.BOOLEAN, defaultValue: false },

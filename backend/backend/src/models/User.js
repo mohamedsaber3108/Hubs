@@ -26,6 +26,12 @@ module.exports = (sequelize) => sequelize.define('User', {
   points_total:   { type: DataTypes.INTEGER.UNSIGNED, defaultValue: 0 },
   followers_count:{ type: DataTypes.INTEGER.UNSIGNED, defaultValue: 0 },
   following_count:{ type: DataTypes.INTEGER.UNSIGNED, defaultValue: 0 },
+  // Onboarding + persona (migration 20240101000017). professional_roles
+  // is a multi-value persona (freelancer/student/recruiter/employer/
+  // entrepreneur/job_seeker/mentor) that drives differentiated community
+  // experiences; onboarding_completed gates the onboarding flow.
+  onboarding_completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+  professional_roles:   { type: DataTypes.JSON, defaultValue: [] },
 }, {
   tableName: 'users',
   underscored: true,
