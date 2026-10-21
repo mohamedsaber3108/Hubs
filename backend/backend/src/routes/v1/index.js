@@ -12,6 +12,8 @@ router.use('/events',      require('./event.routes'));
 router.use('/challenges',  require('./challenge.routes'));
 router.use('/opportunities', require('./opportunity.routes'));
 router.use('/resources',   require('./resource.routes'));
+router.use('/organizations', require('./organization.routes'));
+router.use('/offers',      require('./offer.routes'));
 router.use('/leaderboard', require('./leaderboard.routes'));
 router.use('/mentors',     require('./mentor.routes'));
 router.use('/messages',    require('./message.routes'));

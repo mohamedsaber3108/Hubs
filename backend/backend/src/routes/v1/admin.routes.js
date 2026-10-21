@@ -17,6 +17,8 @@ const mediaCtrl     = require('../../controllers/admin.media.controller');
 const analyticsCtrl = require('../../controllers/admin.analytics.controller');
 const logsCtrl      = require('../../controllers/admin.logs.controller');
 const systemCtrl    = require('../../controllers/admin.system.controller');
+const offersCtrl    = require('../../controllers/admin.offers.controller');
+const offerSchema   = require('../../validations/offer.validation');
 
 // ─── Auth (public) ────────────────────────────────────────────────────────────
 router.post('/auth/login',  authLimiter, validate(schema.adminLogin), authCtrl.login);
@@ -90,6 +92,14 @@ router.delete('/content/resources/:id',      contentCtrl.deleteResource);
 router.get   ('/content/groups',             contentCtrl.listGroups);
 router.put   ('/content/groups/:id',         contentCtrl.updateGroup);
 router.delete('/content/groups/:id',         contentCtrl.deleteGroup);
+
+// ─── Offers & Perks moderation ────────────────────────────────────────────────
+// Reads: any authenticated admin. Review/verify: admin or super_admin.
+router.get  ('/offers',                    offersCtrl.listOffers);
+router.patch('/offers/:id/review',         requireAdminRole('admin', 'super_admin'), validate(offerSchema.reviewOffer), offersCtrl.reviewOffer);
+router.get  ('/offers/:id/redemptions',    offersCtrl.listRedemptions);
+router.get  ('/organizations',             offersCtrl.listOrganizations);
+router.patch('/organizations/:id/verify',  requireAdminRole('admin', 'super_admin'), offersCtrl.setVerification);
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 // Reads: any authenticated admin. Writes: admin or super_admin (not moderator).

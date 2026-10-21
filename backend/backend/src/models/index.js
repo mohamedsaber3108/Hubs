@@ -51,6 +51,12 @@ const UserSkill           = require('./UserSkill')(sequelize);
 const UserExperience      = require('./UserExperience')(sequelize);
 const UserEducation       = require('./UserEducation')(sequelize);
 const Follow              = require('./Follow')(sequelize);
+// Organizations + Offers & Perks (Track B-8)
+const Organization        = require('./Organization')(sequelize);
+const OrganizationMember  = require('./OrganizationMember')(sequelize);
+const Offer               = require('./Offer')(sequelize);
+const PromoCode           = require('./PromoCode')(sequelize);
+const OfferRedemption     = require('./OfferRedemption')(sequelize);
 
 // ─── Associations ─────────────────────────────────────────────────────────────
 
@@ -199,6 +205,27 @@ Follow.belongsTo(User, { foreignKey: 'following_id', as: 'followed' });
 User.hasOne(OnboardingResponse, { foreignKey: 'user_id', as: 'onboarding' });
 OnboardingResponse.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// Organizations (ADR-006)
+User.hasMany(Organization, { foreignKey: 'owner_id', as: 'ownedOrganizations' });
+Organization.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
+Organization.belongsToMany(User, { through: OrganizationMember, foreignKey: 'organization_id', as: 'members' });
+User.belongsToMany(Organization, { through: OrganizationMember, foreignKey: 'user_id', as: 'organizations' });
+OrganizationMember.belongsTo(Organization, { foreignKey: 'organization_id', as: 'organization' });
+OrganizationMember.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// Offers & Perks
+Organization.hasMany(Offer, { foreignKey: 'organization_id', as: 'offers' });
+Offer.belongsTo(Organization, { foreignKey: 'organization_id', as: 'organization' });
+User.hasMany(Offer, { foreignKey: 'created_by', as: 'createdOffers' });
+Offer.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+Offer.hasMany(PromoCode, { foreignKey: 'offer_id', as: 'promoCodes' });
+PromoCode.belongsTo(Offer, { foreignKey: 'offer_id', as: 'offer' });
+Offer.hasMany(OfferRedemption, { foreignKey: 'offer_id', as: 'redemptions' });
+OfferRedemption.belongsTo(Offer, { foreignKey: 'offer_id', as: 'offer' });
+OfferRedemption.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+OfferRedemption.belongsTo(PromoCode, { foreignKey: 'promo_code_id', as: 'promoCode' });
+User.hasMany(OfferRedemption, { foreignKey: 'user_id', as: 'offerRedemptions' });
+
 module.exports = {
   sequelize,
   Sequelize,
@@ -218,4 +245,5 @@ module.exports = {
   PricingPlan, Subscription,
   UserSkill, UserExperience, UserEducation,
   Follow,
+  Organization, OrganizationMember, Offer, PromoCode, OfferRedemption,
 };
