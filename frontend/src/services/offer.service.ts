@@ -1,6 +1,6 @@
 import api from '@/lib/api';
 import type {
-  ApiResponse, PaginatedResponse, Offer, PromoCode, OfferRedemption, RedeemResult,
+  ApiResponse, PaginatedResponse, Offer, PromoCode, OfferRedemption, RedeemResult, OfferAnalytics,
 } from '@/lib/types';
 
 export const offerService = {
@@ -29,4 +29,9 @@ export const offerService = {
     api.get<ApiResponse<{ promo_codes: PromoCode[] }>>(`/offers/${id}/promo-codes`).then((r) => r.data.data.promo_codes),
   addPromoCode: (id: number, data: object) =>
     api.post<ApiResponse<{ promo_code: PromoCode }>>(`/offers/${id}/promo-codes`, data).then((r) => r.data.data.promo_code),
+  updatePromoCode: (id: number, codeId: number, is_active: boolean) =>
+    api.patch<ApiResponse<{ promo_code: PromoCode }>>(`/offers/${id}/promo-codes/${codeId}`, { is_active }).then((r) => r.data.data.promo_code),
+
+  analytics: (id: number) =>
+    api.get<ApiResponse<OfferAnalytics>>(`/offers/${id}/analytics`).then((r) => r.data.data),
 };

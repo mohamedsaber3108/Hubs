@@ -219,6 +219,65 @@ const listPromoCodes = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// PATCH /offers/:id/promo-codes/:codeId — managers toggle a code active/inactive.
+const updatePromoCode = async (req, res, next) => {
+  try {
+    const offer = await Offer.findByPk(req.params.id);
+    if (!offer) return next(ApiError.notFound('Offer not found'));
+    if (!(await canManageOffer(offer, req.user))) return next(ApiError.forbidden('Organization managers only'));
+    const code = await PromoCode.findOne({ where: { id: req.params.codeId, offer_id: offer.id } });
+    if (!code) return next(ApiError.notFound('Promo code not found'));
+    await code.update({ is_active: req.body.is_active !== false });
+    return ApiResponse.success(res, { promo_code: code }, 'Promo code updated');
+  } catch (err) { next(err); }
+};
+
+// GET /offers/:id/analytics — manager-facing redemption analytics for an offer.
+// Returns totals, a status breakdown, and recent redemptions (no promo codes /
+// user emails beyond name — managers see who redeemed their own offers).
+const offerAnalytics = async (req, res, next) => {
+  try {
+    const offer = await Offer.findByPk(req.params.id);
+    if (!offer) return next(ApiError.notFound('Offer not found'));
+    if (!(await canManageOffer(offer, req.user))) return next(ApiError.forbidden('Organization managers only'));
+
+    const [statusRows, recent, promoCodes] = await Promise.all([
+      OfferRedemption.findAll({
+        where: { offer_id: offer.id },
+        attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
+        group: ['status'],
+        raw: true,
+      }),
+      OfferRedemption.findAll({
+        where: { offer_id: offer.id },
+        include: [{ model: User, as: 'user', attributes: ['id', 'first_name', 'last_name', 'username', 'avatar_url'] }],
+        order: [['created_at', 'DESC']], limit: 10,
+      }),
+      PromoCode.findAll({ where: { offer_id: offer.id }, attributes: ['id', 'code', 'max_uses', 'uses_count', 'is_active'] }),
+    ]);
+
+    const byStatus = statusRows.reduce((acc, r) => { acc[r.status] = Number(r.count); return acc; }, {});
+    const total = Object.values(byStatus).reduce((a, b) => a + b, 0);
+    const codeUses = promoCodes.reduce((a, c) => a + (c.uses_count || 0), 0);
+    const codeCapacity = promoCodes.reduce((a, c) => (c.max_uses == null ? a : a + c.max_uses), 0);
+
+    return ApiResponse.success(res, {
+      analytics: {
+        total_redemptions: total,
+        by_status: byStatus,
+        total_limit: offer.total_limit,
+        remaining: offer.total_limit == null ? null : Math.max(0, offer.total_limit - offer.redemptions_count),
+        per_user_limit: offer.per_user_limit,
+        promo_codes_count: promoCodes.length,
+        promo_code_uses: codeUses,
+        promo_code_capacity: codeCapacity || null,
+        status: offer.status,
+      },
+      recent,
+    });
+  } catch (err) { next(err); }
+};
+
 // ─── Redemption (end users) ───────────────────────────────────────────────────
 
 // POST /offers/:id/redeem — records a redemption, enforcing live-status,
@@ -320,6 +379,6 @@ const myRedemptions = async (req, res, next) => {
 module.exports = {
   listOffers, getOffer,
   createOffer, updateOffer, submitOffer, archiveOffer, listOrgOffers,
-  addPromoCode, listPromoCodes,
+  addPromoCode, listPromoCodes, updatePromoCode, offerAnalytics,
   redeemOffer, myRedemptions,
 };

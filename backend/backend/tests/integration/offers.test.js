@@ -231,4 +231,48 @@ describe('Offers & Perks API', () => {
       expect(res.body.data.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  // ─── Manager analytics + promo-code management (no admin privilege) ───────────
+  describe('Manager analytics & promo-code management', () => {
+    it('forbids a non-manager from viewing analytics', async () => {
+      const res = await request(app)
+        .get(`/api/v1/offers/${offerId}/analytics`)
+        .set('Authorization', `Bearer ${shopperToken}`);
+      expect(res.status).toBe(403);
+    });
+
+    it('lets the org manager view redemption analytics', async () => {
+      const res = await request(app)
+        .get(`/api/v1/offers/${offerId}/analytics`)
+        .set('Authorization', `Bearer ${ownerToken}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.analytics.total_redemptions).toBeGreaterThanOrEqual(2);
+      expect(res.body.data.analytics.by_status).toHaveProperty('redeemed');
+      expect(Array.isArray(res.body.data.recent)).toBe(true);
+      expect(res.body.data.analytics.promo_code_uses).toBeGreaterThanOrEqual(2);
+    });
+
+    it('lets the manager deactivate a promo code', async () => {
+      const list = await request(app)
+        .get(`/api/v1/offers/${offerId}/promo-codes`)
+        .set('Authorization', `Bearer ${ownerToken}`);
+      const codeId = list.body.data.promo_codes[0].id;
+      const res = await request(app)
+        .patch(`/api/v1/offers/${offerId}/promo-codes/${codeId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ is_active: false });
+      expect(res.status).toBe(200);
+      expect(res.body.data.promo_code.is_active).toBe(false);
+    });
+
+    it('rich-edits an offer and returns it to draft for re-review', async () => {
+      const res = await request(app)
+        .put(`/api/v1/offers/${offerId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ title: '50% off Pro plan (updated)', per_user_limit: 2, target_communities: ['freelancespace'] });
+      expect(res.status).toBe(200);
+      // Editing an approved offer sends it back to draft (re-approval required).
+      expect(res.body.data.offer.status).toBe('draft');
+    });
+  });
 });

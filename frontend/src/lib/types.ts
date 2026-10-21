@@ -165,6 +165,21 @@ export interface RedeemResult {
   redemption_instructions: string | null;
 }
 
+export interface OfferAnalytics {
+  analytics: {
+    total_redemptions: number;
+    by_status: Record<string, number>;
+    total_limit: number | null;
+    remaining: number | null;
+    per_user_limit: number | null;
+    promo_codes_count: number;
+    promo_code_uses: number;
+    promo_code_capacity: number | null;
+    status: OfferStatus;
+  };
+  recent: OfferRedemption[];
+}
+
 export type PartnershipStatus = 'pending' | 'accepted' | 'declined' | 'ended';
 
 export interface PartnershipRequest {

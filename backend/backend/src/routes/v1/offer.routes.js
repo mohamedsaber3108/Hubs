@@ -16,8 +16,10 @@ router.get('/:id', optionalAuth, ctrl.getOffer);
 router.put   ('/:id',             authenticate, validate(schema.updateOffer), ctrl.updateOffer);
 router.delete('/:id',             authenticate, ctrl.archiveOffer);
 router.post  ('/:id/submit',      authenticate, ctrl.submitOffer);
+router.get   ('/:id/analytics',   authenticate, ctrl.offerAnalytics);
 router.get   ('/:id/promo-codes', authenticate, ctrl.listPromoCodes);
 router.post  ('/:id/promo-codes', authenticate, validate(schema.createPromoCode), ctrl.addPromoCode);
+router.patch ('/:id/promo-codes/:codeId', authenticate, ctrl.updatePromoCode);
 
 // Redemption (end users)
 router.post('/:id/redeem', authenticate, ctrl.redeemOffer);

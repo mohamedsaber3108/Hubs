@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Building2, Loader2, BadgeCheck, Globe, Plus, Send, Check, X, Handshake, Tag } from "lucide-react";
+import { Building2, Loader2, BadgeCheck, Globe, Plus, Send, Check, X, Handshake, Tag, Settings2, Archive } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import {
   useOrganization, useOrganizationOffers, usePartnerships,
-  useCreateOfferMutation, useSubmitOfferMutationById,
+  useCreateOfferMutation, useSubmitOfferMutationById, useArchiveOfferMutation,
   useRequestPartnershipMutation, useRespondPartnershipMutation,
 } from "@/hooks/api/useOffers";
+import OfferManageModal from "@/components/offers/OfferManageModal";
 import type { Offer, PartnershipRequest } from "@/lib/types";
 
 const OFFER_STATUS_STYLE: Record<string, string> = {
@@ -61,7 +62,9 @@ function CreateOfferForm({ slug, onDone }: { slug: string; onDone: () => void })
 function OffersManager({ slug }: { slug: string }) {
   const { data: offers, isLoading } = useOrganizationOffers(slug);
   const { mutate: submit } = useSubmitOfferMutationById();
+  const { mutate: archive } = useArchiveOfferMutation(slug);
   const [adding, setAdding] = useState(false);
+  const [managing, setManaging] = useState<Offer | null>(null);
 
   return (
     <div className="rounded-xl border border-border bg-card p-6">
@@ -74,20 +77,38 @@ function OffersManager({ slug }: { slug: string }) {
         : !offers?.length ? <p className="text-sm text-muted-foreground py-4 text-center">No offers yet. Create your first one.</p> : (
         <div className="space-y-2">
           {offers.map((o: Offer) => (
-            <div key={o.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+            <div key={o.id} className="flex items-center justify-between gap-2 py-2 border-b border-border last:border-0">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{o.title}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${OFFER_STATUS_STYLE[o.status]}`}>{o.status}</span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${OFFER_STATUS_STYLE[o.status]}`}>{o.status}</span>
+                  <span className="text-xs text-muted-foreground">{o.redemptions_count} redeemed</span>
+                </div>
               </div>
-              {(o.status === 'draft' || o.status === 'rejected') && (
-                <Button size="sm" variant="outline" onClick={() => submit(o.id)}>
-                  <Send className="w-3.5 h-3.5 mr-1" /> Submit for review
-                </Button>
-              )}
+              <div className="flex gap-1 flex-shrink-0">
+                {o.status !== 'archived' && (
+                  <Button size="sm" variant="outline" onClick={() => setManaging(o)}>
+                    <Settings2 className="w-3.5 h-3.5 mr-1" /> Manage
+                  </Button>
+                )}
+                {(o.status === 'draft' || o.status === 'rejected') && (
+                  <Button size="sm" variant="outline" onClick={() => submit(o.id)}>
+                    <Send className="w-3.5 h-3.5 mr-1" /> Submit
+                  </Button>
+                )}
+                {o.status !== 'archived' && (
+                  <button onClick={() => { if (confirm('Archive this offer?')) archive(o.id); }} title="Archive"
+                    className="w-8 h-8 rounded-lg hover:bg-destructive/10 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors">
+                    <Archive className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      {managing && <OfferManageModal slug={slug} offer={managing} onClose={() => setManaging(null)} />}
     </div>
   );
 }

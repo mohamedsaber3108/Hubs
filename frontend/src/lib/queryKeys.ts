@@ -61,6 +61,7 @@ export const queryKeys = {
   offers: (params?: object) => ['offers', params] as const,
   offer: (id: number) => ['offers', id] as const,
   offerPromoCodes: (id: number) => ['offers', id, 'promo-codes'] as const,
+  offerAnalytics: (id: number) => ['offers', id, 'analytics'] as const,
   myRedemptions: () => ['offers', 'redemptions', 'me'] as const,
 
   // Organizations
