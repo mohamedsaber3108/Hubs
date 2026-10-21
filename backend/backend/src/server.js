@@ -6,6 +6,7 @@ const { Server: SocketServer } = require('socket.io');
 const { sequelize } = require('./models');
 const { getRedisClient } = require('./config/redis');
 const logger = require('./utils/logger');
+const { isClusterMode } = require('./utils/clusterMode');
 
 const PORT = parseInt(process.env.PORT) || 3000;
 
@@ -29,12 +30,23 @@ app.set('io', io);
 // Under PM2 cluster mode (deploy/pm2.config.js: instances:'max') each worker is
 // a separate process with its own in-memory socket registry. Without a shared
 // adapter, a broadcast from worker A never reaches clients on worker B, so chat
-// messages and notifications silently fail to deliver in production. The Redis
-// adapter puts every worker on a shared Redis pub/sub bus so broadcasts fan out
-// across all workers. Implemented defensively: if the adapter package or Redis
-// is unavailable, we log loudly and continue in single-process mode rather than
-// crash — correct degradation (sockets still work within one worker).
+// messages and notifications silently fail to deliver. The Redis adapter puts
+// every worker on a shared Redis pub/sub bus so broadcasts fan out across all
+// workers.
+//
+// FAIL-CLOSED CONTRACT (per production-safety requirement):
+//   When the deployment is a multi-worker cluster, a missing adapter means
+//   silent, partial message loss — the worst kind of production bug. So in
+//   cluster mode we REFUSE TO BOOT unless the adapter is wired to a reachable
+//   Redis. We never silently degrade a cluster to single-process mode.
+//   In single-worker / dev mode, degrading (log + continue) is correct and safe.
+//
+// Cluster mode is detected explicitly via SOCKET_CLUSTER_MODE=true (set by
+// deploy/pm2.config.js), and defensively via PM2's own cluster signals — see
+// src/utils/clusterMode.js (extracted so the fail-closed decision is unit-tested).
+
 async function setupSocketAdapter() {
+  const clusterMode = isClusterMode();
   try {
     const Redis = require('ioredis');
     const { createAdapter } = require('@socket.io/redis-adapter');
@@ -43,24 +55,48 @@ async function setupSocketAdapter() {
       port: parseInt(process.env.REDIS_PORT) || 6379,
       password: process.env.REDIS_PASSWORD || undefined,
       db: parseInt(process.env.REDIS_DB) || 0,
+      // Bounded, explicit connection attempt so a dead Redis fails fast instead
+      // of ioredis retrying forever and hanging boot.
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => (times > 5 ? null : Math.min(times * 200, 1000)),
     };
     const pubClient = new Redis(redisOpts);
     const subClient = pubClient.duplicate();
-    // Don't let adapter client errors take the process down — log and keep serving.
+    // Don't let transient adapter client errors take the process down AFTER it's
+    // wired — log and keep serving. (Boot-time reachability is enforced below.)
     pubClient.on('error', (e) => logger.error('Socket.IO Redis pub client error: ' + e.message));
     subClient.on('error', (e) => logger.error('Socket.IO Redis sub client error: ' + e.message));
-    await Promise.all([
-      pubClient.status === 'ready' ? Promise.resolve() : new Promise((res) => pubClient.once('ready', res)),
-      subClient.status === 'ready' ? Promise.resolve() : new Promise((res) => subClient.once('ready', res)),
-    ]);
+
+    // Require both clients to actually reach Redis within a bounded window,
+    // otherwise treat as a hard failure (don't wire a dead adapter).
+    const ready = (client) => new Promise((resolve, reject) => {
+      if (client.status === 'ready') return resolve();
+      const timer = setTimeout(() => reject(new Error('Redis connection timed out')), 10000);
+      client.once('ready', () => { clearTimeout(timer); resolve(); });
+      client.once('end', () => { clearTimeout(timer); reject(new Error('Redis connection closed')); });
+    });
+    await Promise.all([ready(pubClient), ready(subClient)]);
+
     io.adapter(createAdapter(pubClient, subClient));
     logger.info('Socket.IO Redis adapter enabled (multi-worker broadcast active)');
   } catch (err) {
+    if (clusterMode) {
+      // FAIL CLOSED: a cluster without a working adapter silently drops
+      // cross-worker broadcasts. Refuse to start rather than serve a broken,
+      // data-losing socket layer in production.
+      logger.error(
+        'FATAL: Socket.IO Redis adapter could not be initialized in cluster mode (' +
+        err.message + '). Refusing to start — a multi-worker cluster without the ' +
+        'Redis adapter silently loses cross-worker broadcasts (chat/notifications). ' +
+        'Ensure @socket.io/redis-adapter is installed and Redis is reachable, or run ' +
+        'a single worker (unset SOCKET_CLUSTER_MODE / instances:1).',
+      );
+      throw err; // propagates to start()'s catch -> process.exit(1)
+    }
     logger.warn(
       'Socket.IO Redis adapter NOT enabled (' + err.message + '). ' +
-      'Running single-process socket mode — safe for a single PM2 worker, but ' +
-      'broadcasts will NOT cross workers under cluster mode. Install ' +
-      '@socket.io/redis-adapter and ensure Redis is reachable for production clustering.',
+      'Running single-process socket mode — safe for a single worker. ' +
+      'Broadcasts will NOT cross workers; do not enable cluster mode without Redis.',
     );
   }
 }

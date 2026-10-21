@@ -22,10 +22,16 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        // Multi-worker cluster: the Socket.IO Redis adapter is REQUIRED so
+        // broadcasts (chat, notifications) fan out across workers. server.js
+        // fails closed (refuses to boot) if the adapter can't be wired while
+        // this is set. See setupSocketAdapter() in src/server.js.
+        SOCKET_CLUSTER_MODE: 'true',
       },
       env_production: {
         NODE_ENV: 'production',
         PORT: 3000,
+        SOCKET_CLUSTER_MODE: 'true',
       },
     },
   ],
