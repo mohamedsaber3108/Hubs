@@ -41,16 +41,28 @@ Password:        <GENERATE — store in AWS Secrets Manager>
 mysql -h <rds-endpoint> -u usam_user -p usam_hub < backend/rds-init.sql
 ```
 
-### 1.4 Run migrations
+### 1.4 Run migrations + structural seeds (NO demo data in production)
 ```bash
 cd backend
 NODE_ENV=production npx sequelize-cli db:migrate
+# In production, the admin + demo-user seeders SELF-SKIP (they detect
+# NODE_ENV=production and no-op), so db:seed:all only loads structural data
+# (communities, settings, pricing plans, email templates) — never demo
+# users or fixed-credential admins.
 NODE_ENV=production npx sequelize-cli db:seed:all
 ```
 
-🔴 **Change the default super-admin password** immediately after seeding:
-```sql
-UPDATE admins SET password_hash = '<bcrypt_hash_of_new_password>' WHERE email = 'superadmin@usam.hub';
+🔴 **Provision the initial super-admin explicitly and securely** (there is NO
+seeded default admin in production). Supply real credentials via env — the
+password is bcrypt-hashed and never stored or logged in plaintext:
+```bash
+cd backend
+INITIAL_ADMIN_EMAIL=you@yourdomain.com \
+INITIAL_ADMIN_PASSWORD='<strong 12+ char password: lower/upper/number/symbol>' \
+INITIAL_ADMIN_NAME='Platform Owner' \
+NODE_ENV=production npm run provision:admin
+# Idempotent: re-running reports "already exists" and changes nothing.
+# Use `npm run provision:admin -- --force` to reset the password later.
 ```
 
 ---
@@ -98,7 +110,8 @@ nano .env     # Fill every value — see §7 for complete reference
 
 ### 2.6 Start with PM2
 ```bash
-pm2 start ecosystem.config.js --env production
+# App name is `usam-hub-api`, config lives at deploy/pm2.config.js
+pm2 start deploy/pm2.config.js --env production
 pm2 save
 pm2 startup     # follow the printed command to enable auto-start
 ```
@@ -380,9 +393,9 @@ sudo systemctl enable fail2ban
 sudo apt install unattended-upgrades
 sudo dpkg-reconfigure --priority=low unattended-upgrades
 
-# 6. Change default admin credentials immediately after first deploy
-# Admin portal: https://yourdomain.com/admin
-# Default: superadmin@usam.hub / Admin@USAM2024!
+# 6. Initial admin: there is NO default admin in production. Provision one
+#    explicitly with `npm run provision:admin` (see §1.4). Admin portal:
+#    https://yourdomain.com/admin
 ```
 
 ---
@@ -440,10 +453,10 @@ curl -X POST https://yourdomain.com/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"first_name":"Test","last_name":"User","username":"launchtest","email":"launch@test.com","password":"TestPass123!"}'
 
-# 3. Admin portal login
+# 3. Admin portal login (use the credentials you set via `npm run provision:admin`)
 curl -X POST https://yourdomain.com/api/v1/admin/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"superadmin@usam.hub","password":"Admin@USAM2024!"}'
+  -d '{"email":"<your-provisioned-admin-email>","password":"<your-admin-password>"}'
 # → should return access_token
 
 # 4. Swagger docs accessible
@@ -473,7 +486,8 @@ curl -I https://yourdomain.com/api/docs
 
 ```bash
 # Via PM2 (instant — reverts to last working process state)
-pm2 reload usam-hub-backend
+# App name is `usam-hub-api` (see deploy/pm2.config.js)
+pm2 reload usam-hub-api
 
 # Via Git (revert to previous commit)
 ssh ubuntu@<EC2_IP>
@@ -481,13 +495,13 @@ cd /var/www/usam-hub
 git log --oneline -10        # find last good commit hash
 git checkout <commit_hash>
 cd backend && npm ci --omit=dev
-pm2 reload usam-hub-backend
+pm2 reload usam-hub-api
 
 # Database rollback (one migration)
 NODE_ENV=production npx sequelize-cli db:migrate:undo
 
-# Or use the pre-built rollback script
-bash backend/rollback.sh
+# Or use the pre-built rollback script (prompts for the commit hash)
+bash deploy/rollback.sh
 ```
 
 ---
@@ -496,7 +510,7 @@ bash backend/rollback.sh
 
 Before going live, every one of these must be ✅:
 
-- [ ] Default admin password changed (`superadmin@usam.hub`)
+- [ ] Initial super-admin provisioned via `npm run provision:admin` (no seeded default admin exists in prod)
 - [ ] `.env` file has real secrets — no placeholder values
 - [ ] JWT secrets are 64+ characters, randomly generated
 - [ ] Redis is password-protected and bound to localhost
