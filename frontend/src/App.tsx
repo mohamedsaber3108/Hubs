@@ -12,6 +12,7 @@ import BackToTop from "@/components/BackToTop";
 import Index from "./pages/Index";
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
+import AuthCallback from "./pages/AuthCallback";
 import Onboarding from "./pages/Onboarding";
 import Communities from "./pages/Communities";
 import Dashboard from "./pages/Dashboard";
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/"               element={<Index />} />
               <Route path="/auth/signup"    element={<SignUp />} />
               <Route path="/auth/signin"    element={<SignIn />} />
+              <Route path="/auth/callback"  element={<AuthCallback />} />
               <Route path="/pricing"        element={<Pricing />} />
               <Route path="*"              element={<NotFound />} />
 

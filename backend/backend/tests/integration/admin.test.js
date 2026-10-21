@@ -205,4 +205,23 @@ describe('Admin API', () => {
       expect(res.status).toBe(200);
     });
   });
+
+  // SEC-02: admin tokens are signed/verified with ADMIN_JWT_SECRET, which is
+  // distinct from JWT_ACCESS_SECRET. An admin-shaped token forged with the USER
+  // secret must NOT be accepted by admin endpoints.
+  describe('SEC-02 — admin token secret isolation', () => {
+    const jwt = require('jsonwebtoken');
+
+    it('rejects an admin-shaped token signed with the USER secret', async () => {
+      const forged = jwt.sign({ sub: 1, role: 'super_admin', type: 'admin' }, process.env.JWT_ACCESS_SECRET, { expiresIn: '2h' });
+      const res = await request(app).get('/api/v1/admin/auth/me').set('Authorization', 'Bearer ' + forged);
+      expect(res.status).toBe(401);
+    });
+
+    it('accepts a token signed with the ADMIN secret (control)', async () => {
+      // adminToken came from a real login (signed with ADMIN_JWT_SECRET) and works.
+      const res = await request(app).get('/api/v1/admin/auth/me').set('Authorization', 'Bearer ' + adminToken);
+      expect(res.status).toBe(200);
+    });
+  });
 });

@@ -7,12 +7,14 @@ const { Admin, ActivityLog } = require('../models');
 const ApiError    = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const logger      = require('../utils/logger');
+const { getAdminJwtSecret } = require('../config/adminJwt');
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function issueAdminToken(admin) {
+  // SEC-02: sign with the dedicated admin secret, not the shared user secret.
   return jwt.sign(
     { sub: admin.id, role: admin.role, type: 'admin' },
-    process.env.JWT_ACCESS_SECRET,
+    getAdminJwtSecret(),
     { expiresIn: process.env.ADMIN_JWT_EXPIRES || '2h' }
   );
 }

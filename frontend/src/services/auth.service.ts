@@ -18,6 +18,15 @@ export const authService = {
 
   getMe: () => api.get<ApiResponse<{ user: AuthUser }>>('/users/me').then((r) => r.data.data.user),
 
+  // SEC-03: after an OAuth redirect the access token is NOT in the URL. The
+  // backend set an httpOnly refresh cookie; exchange it for an access token
+  // here (withCredentials sends the cookie), store it, then load the profile.
+  exchangeOAuth: async (): Promise<AuthUser> => {
+    const res = await api.post<ApiResponse<{ access_token: string }>>('/auth/refresh-token', {});
+    tokenStorage.set(res.data.data.access_token);
+    return api.get<ApiResponse<{ user: AuthUser }>>('/users/me').then((r) => r.data.data.user);
+  },
+
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
 
   resetPassword: (token: string, password: string) => api.post('/auth/reset-password', { token, password }),

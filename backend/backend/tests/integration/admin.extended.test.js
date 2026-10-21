@@ -31,7 +31,11 @@ describe('Admin API — Extended', () => {
       const res = await request(app)
         .get('/api/v1/admin/auth/me')
         .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBe(403);
+      // SEC-02: admin tokens are verified with a dedicated ADMIN_JWT_SECRET,
+      // so a user token (signed with JWT_ACCESS_SECRET) now fails verification
+      // outright (401) instead of passing verification and being rejected by
+      // the type/role check (403). Either is a correct rejection.
+      expect([401, 403]).toContain(res.status);
     });
   });
 

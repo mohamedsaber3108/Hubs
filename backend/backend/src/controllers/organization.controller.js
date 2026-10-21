@@ -1,6 +1,6 @@
 'use strict';
 const { Op } = require('sequelize');
-const { Organization, OrganizationMember, User, Offer, PartnershipRequest } = require('../models');
+const { Organization, OrganizationMember, User, PartnershipRequest } = require('../models');
 const ApiError    = require('../utils/ApiError');
 const ApiResponse = require('../utils/ApiResponse');
 const { paginate } = require('../utils/paginate');

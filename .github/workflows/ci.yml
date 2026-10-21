@@ -67,8 +67,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Lint
-        run: npm run lint
-        continue-on-error: true  # backend has no eslint config yet (tracked); don't hard-fail CI on it
+        run: npm run lint  # backend eslint config added (.eslintrc.json); passes with 0 errors
       - name: Dependency audit (high+ only, non-blocking)
         run: npm audit --audit-level=high || true
       - name: Unit tests (no DB needed)

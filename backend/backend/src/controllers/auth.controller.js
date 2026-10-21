@@ -317,8 +317,14 @@ const oauthCallback = async (req, res, next) => {
       sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    // SEC-03: do NOT put the access token in the redirect URL — URLs leak via
+    // browser history, Referer headers, and server/proxy logs. The refresh
+    // token is set as an httpOnly cookie above; the frontend /auth/callback
+    // route exchanges that cookie for an access token via POST /auth/refresh-token.
+    // `access` is intentionally not sent back here (the exchange re-issues one).
+    void access;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    return res.redirect(frontendUrl + '/auth/callback?token=' + access);
+    return res.redirect(frontendUrl + '/auth/callback?oauth=success');
   } catch (err) {
     next(err);
   }

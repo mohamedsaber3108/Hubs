@@ -2,6 +2,7 @@
 const jwt      = require('jsonwebtoken');
 const ApiError = require('../utils/ApiError');
 const { Admin } = require('../models');
+const { getAdminJwtSecret } = require('../config/adminJwt');
 
 const authenticateAdmin = async (req, res, next) => {
   try {
@@ -10,7 +11,8 @@ const authenticateAdmin = async (req, res, next) => {
       return next(ApiError.unauthorized('Admin token required'));
 
     const token   = header.split(' ')[1];
-    const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    // SEC-02: verify with the dedicated admin secret, not the shared user secret.
+    const payload = jwt.verify(token, getAdminJwtSecret());
     if (payload.type !== 'admin') return next(ApiError.forbidden('Not an admin token'));
 
     const admin = await Admin.findOne({ where: { id: payload.sub, is_active: true } });
