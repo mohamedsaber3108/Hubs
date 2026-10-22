@@ -39,4 +39,17 @@ router.get('/facebook/callback', passport.authenticate('facebook', { session: fa
 router.get('/linkedin', passport.authenticate('linkedin', { session: false }));
 router.get('/linkedin/callback', passport.authenticate('linkedin', { session: false, failureRedirect: '/auth/signin?error=linkedin' }), controller.oauthCallback);
 
+// TEST-ONLY OAuth harness route. Mirrors the real provider callbacks (same
+// failureRedirect + oauthCallback controller) but drives the 'oauth-mock'
+// strategy, which is only registered when NODE_ENV==='test'. Lets the OAuth
+// integration tests exercise the full callback -> token issue -> refresh-cookie
+// pipeline without real credentials. Never mounted in production.
+if (process.env.NODE_ENV === 'test') {
+  router.get(
+    '/oauth-mock/callback',
+    passport.authenticate('oauth-mock', { session: false, failureRedirect: '/auth/signin?error=oauth_failed' }),
+    controller.oauthCallback,
+  );
+}
+
 module.exports = router;

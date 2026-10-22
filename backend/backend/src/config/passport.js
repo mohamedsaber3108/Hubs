@@ -26,6 +26,8 @@ passport.use('jwt', new JwtStrategy({
 }));
 
 // ─── OAuth helper: find or create user ────────────────────────────────────────
+// Exported for tests (OAuth test harness) so the find-or-create logic can be
+// exercised with mocked provider profiles without real credentials.
 async function findOrCreateOAuthUser(profile, provider, accessToken, refreshToken) {
   const email = profile.emails?.[0]?.value;
   if (!email) throw new Error('OAuth profile missing email');
@@ -139,4 +141,29 @@ if (process.env.LINKEDIN_CLIENT_ID) {
   }));
 }
 
+// ─── Mock OAuth strategy (TEST ONLY) ────────────────────────────────────────
+// Enables an automated OAuth test harness with no real provider credentials and
+// no extra dependency. Minimal passport Strategy that runs the REAL
+// findOrCreateOAuthUser pipeline against a profile supplied via the
+// `x-mock-oauth-profile` request header, so the callback controller, token
+// issuance, session creation, and refresh-cookie exchange are exercised
+// end-to-end. Guarded to NODE_ENV==='test' so it can never run in production.
+if (process.env.NODE_ENV === 'test') {
+  const passportStrategy = require('passport-strategy');
+  class MockOAuthStrategy extends passportStrategy.Strategy {
+    constructor() { super(); this.name = 'oauth-mock'; }
+    authenticate(req) {
+      const raw = req.headers['x-mock-oauth-profile'];
+      if (!raw) return this.fail({ message: 'provider_failed' }); // simulate provider failure
+      let profile;
+      try { profile = JSON.parse(raw); } catch (e) { return this.error(e); }
+      findOrCreateOAuthUser(profile, profile._provider || 'google', 'mock-access', 'mock-refresh')
+        .then((user) => (user ? this.success(user) : this.fail({ message: 'no_user' })))
+        .catch((err) => this.error(err));
+    }
+  }
+  passport.use('oauth-mock', new MockOAuthStrategy());
+}
+
 module.exports = passport;
+module.exports.findOrCreateOAuthUser = findOrCreateOAuthUser;
