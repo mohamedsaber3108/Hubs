@@ -68,8 +68,14 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint  # backend eslint config added (.eslintrc.json); passes with 0 errors
-      - name: Dependency audit (high+ only, non-blocking)
-        run: npm audit --audit-level=high || true
+      # Meaningful gate: PRODUCTION dependencies must have no high+ vulns. Dev/test
+      # toolchain (jest/nodemon/braces/micromatch) is excluded — it never ships to
+      # production (deploy uses npm ci --omit=dev). See
+      # docs/security/DEPENDENCY_RISK_ASSESSMENT.md for accepted residuals.
+      - name: Dependency audit (production deps, high+ BLOCKING)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency audit (full tree, informational)
+        run: npm audit || true
       - name: Unit tests (no DB needed)
         run: npm run test:unit
       - name: Verify migrations apply from an EMPTY database
@@ -99,9 +105,14 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
-        continue-on-error: true  # 81 pre-existing lint findings tracked in roadmap; don't hard-fail yet
-      - name: Dependency audit (high+ only, non-blocking)
-        run: npm audit --audit-level=high || true
+        continue-on-error: true  # pre-existing lint findings tracked in roadmap; don't hard-fail yet
+      # Informational: the frontend ships a STATIC bundle, not its build tools, so
+      # most audit findings (vite/vitest/esbuild/rollup/eslint/postcss) are not in
+      # the production attack surface. The one shipped moderate (react-router open
+      # redirect) requires a v7 major migration and is an accepted/tracked residual
+      # — see docs/security/DEPENDENCY_RISK_ASSESSMENT.md. Kept non-blocking.
+      - name: Dependency audit (informational)
+        run: npm audit || true
       - name: Unit tests
         run: npm run test
       - name: Production build
