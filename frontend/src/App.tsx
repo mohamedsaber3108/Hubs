@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import NomadAI from "@/components/NomadAI";
 import MobileNav from "@/components/MobileNav";
 import BackToTop from "@/components/BackToTop";
@@ -57,6 +58,7 @@ const App = () => (
           <AuthProvider>
             <Toaster />
             <Sonner />
+            <ErrorBoundary>
             <Routes>
               {/* Public */}
               <Route path="/"               element={<Index />} />
@@ -106,6 +108,7 @@ const App = () => (
               <Route path="/messages"      element={<ProtectedRoute><Messages /></ProtectedRoute>} />
               <Route path="/admin"         element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             </Routes>
+            </ErrorBoundary>
             <NomadAI />
             <MobileNav />
             <BackToTop />

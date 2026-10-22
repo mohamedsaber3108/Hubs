@@ -92,8 +92,10 @@ export default function PostCard({ post }: { post: Post }) {
       <div className="px-4 py-3">
         <p className="text-sm text-foreground whitespace-pre-line">{post.content}</p>
 
-        {/* Hashtags */}
-        {post.hashtags.length > 0 && (
+        {/* Hashtags — guard: the real API Post has no `hashtags` field (it's a
+            mock-data shape), so this must tolerate undefined to avoid crashing
+            the whole feed for communities that have real seeded posts. */}
+        {post.hashtags && post.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
             {post.hashtags.map((h) => (
               <span key={h} className="text-xs text-primary-glow font-medium cursor-pointer hover:underline">#{h}</span>
