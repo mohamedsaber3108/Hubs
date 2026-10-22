@@ -72,9 +72,14 @@ function transformValue(v) {
 }
 
 function main() {
-  const file = process.argv[2];
-  const emitAll = process.argv.includes('--all');
-  if (!file) { console.error('usage: transform.js <pg_dump.sql> [--all]'); process.exit(1); }
+  const args = process.argv.slice(2);
+  const emitAll = args.includes('--all');
+  // --out <path> writes directly to a file (byte-safe: avoids stdout piping through
+  // a non-UTF-8 console on Windows). Without it, output goes to stdout as before.
+  const outIdx = args.indexOf('--out');
+  const outPath = outIdx !== -1 ? args[outIdx + 1] : null;
+  const file = args.find((a, i) => !a.startsWith('--') && a !== args[outIdx + 1]);
+  if (!file) { console.error('usage: transform.js <pg_dump.sql> [--all] [--out <file>]'); process.exit(1); }
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
 
   const re = /^INSERT INTO (?:public\.)?"?([a-zA-Z_][a-zA-Z0-9_]*)"?\s*\(([^)]*)\)\s*VALUES\s*\((.*)\);\s*$/;
@@ -98,7 +103,13 @@ function main() {
   }
   emitted.push('SET FOREIGN_KEY_CHECKS=1;');
 
-  process.stdout.write(emitted.join('\n') + '\n');
+  const output = emitted.join('\n') + '\n';
+  if (outPath) {
+    fs.writeFileSync(outPath, output, 'utf8'); // Node writes real UTF-8 bytes, no console involved
+    console.error(`wrote ${outPath}`);
+  } else {
+    process.stdout.write(output);
+  }
   for (const [t, n] of Object.entries(counts)) console.error(`transformed ${t}: ${n} rows`);
 }
 
