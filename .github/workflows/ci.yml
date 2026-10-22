@@ -55,6 +55,7 @@ jobs:
       REDIS_PORT: '6379'
       JWT_ACCESS_SECRET: ci_access_secret_at_least_32_chars_long_xx
       JWT_REFRESH_SECRET: ci_refresh_secret_at_least_32_chars_long_x
+      ADMIN_JWT_SECRET: ci_admin_secret_distinct_min_32_chars_long_z
       JWT_ACCESS_EXPIRES: 15m
       JWT_REFRESH_EXPIRES: 7d
     steps:
@@ -115,5 +116,14 @@ jobs:
         run: npm audit || true
       - name: Unit tests
         run: npm run test
-      - name: Production build
+      - name: Production build (build-in-CI; keeps the 3.7GB EC2 box off builds)
         run: npm run build
+      # Publish the exact tested frontend bundle so deployment consumes a
+      # CI-built artifact instead of building on the production EC2 box.
+      - name: Upload frontend dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hub-frontend-dist-${{ github.sha }}
+          path: frontend/dist
+          retention-days: 14
+          if-no-files-found: error

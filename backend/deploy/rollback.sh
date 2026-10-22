@@ -15,8 +15,8 @@ read -p "Enter commit hash to rollback to: " COMMIT_HASH
 
 git checkout $COMMIT_HASH
 
-cd $APP_DIR/backend
-npm install --production
+cd $APP_DIR/backend/backend
+npm ci --omit=dev
 
 # Undo last migration if needed (optional)
 # npx sequelize-cli db:migrate:undo

@@ -6,9 +6,11 @@
 # ══════════════════════════════════════════════════════════
 
 set -e
-REPO_URL="https://github.com/YOUR_ORG/usam-hub.git"
+REPO_URL="https://github.com/Mahmoud-Elwazeer/hub.git"
 APP_DIR="/var/www/usam-hub"
-DOMAIN="yourdomain.com"
+# Backend is nested at backend/backend in this repo.
+BACKEND_DIR="$APP_DIR/backend/backend"
+DOMAIN="hub.usamif.com"
 
 echo "═══════════════════════════════════════"
 echo "  USAM Hub — EC2 Setup Starting"
@@ -60,9 +62,9 @@ else
   git clone $REPO_URL .
 fi
 
-# Install backend dependencies
-cd $APP_DIR/backend
-npm install --production
+# Install backend dependencies (backend is nested at backend/backend)
+cd $BACKEND_DIR
+npm ci --omit=dev
 
 # Build frontend
 cd $APP_DIR/frontend
@@ -73,36 +75,36 @@ npm run build
 mkdir -p /var/www/html/usam-hub
 cp -r dist/* /var/www/html/usam-hub/
 
-# Copy nginx config
-cp $APP_DIR/deploy/nginx.conf /etc/nginx/sites-available/usam-hub
-ln -sf /etc/nginx/sites-available/usam-hub /etc/nginx/sites-enabled/usam-hub
+# Copy nginx config (deploy kit lives at backend/deploy in the repo)
+cp $APP_DIR/backend/deploy/nginx.conf /etc/nginx/sites-available/hub.usamif.com
+ln -sf /etc/nginx/sites-available/hub.usamif.com /etc/nginx/sites-enabled/hub.usamif.com
 rm -f /etc/nginx/sites-enabled/default
 
 # Test nginx config
 nginx -t && systemctl reload nginx
 
-# Copy .env
-cp $APP_DIR/backend/.env.example $APP_DIR/backend/.env
+# Copy .env template (fill with REAL values; never commit)
+cp $BACKEND_DIR/.env.example $BACKEND_DIR/.env
 echo ""
-echo "⚠️  IMPORTANT: Edit /var/www/usam-hub/backend/.env with your real values!"
+echo "⚠️  IMPORTANT: Edit $BACKEND_DIR/.env with your real values (RDS, Redis pw, JWT secrets, SES sender)!"
 echo ""
 
 # Run database migrations and structural seeds.
 # NOTE: with NODE_ENV=production the admin + demo-user seeders self-skip, so
 # this loads only structural data (communities/settings/pricing/templates) —
 # never demo users or a fixed-credential default admin.
-cd $APP_DIR/backend
+cd $BACKEND_DIR
 NODE_ENV=production npx sequelize-cli db:migrate
 NODE_ENV=production npx sequelize-cli db:seed:all
 
 echo ""
 echo "⚠️  Provision the initial super-admin explicitly before using the admin portal:"
-echo "    cd $APP_DIR/backend && INITIAL_ADMIN_EMAIL=you@domain \\"
+echo "    cd $BACKEND_DIR && INITIAL_ADMIN_EMAIL=you@domain \\"
 echo "      INITIAL_ADMIN_PASSWORD='<strong>' NODE_ENV=production npm run provision:admin"
 echo ""
 
-# Start with PM2 (app name: usam-hub-api)
-pm2 start $APP_DIR/deploy/pm2.config.js
+# Start with PM2 (app name: usam-hub-api; config at backend/deploy)
+pm2 start $APP_DIR/backend/deploy/pm2.config.js
 pm2 startup systemd -u ubuntu --hp /home/ubuntu
 pm2 save
 

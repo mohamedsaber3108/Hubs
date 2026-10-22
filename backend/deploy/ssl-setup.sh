@@ -4,8 +4,8 @@
 # ══════════════════════════════════════════════════════════
 
 set -e
-DOMAIN="yourdomain.com"
-EMAIL="admin@yourdomain.com"
+DOMAIN="hub.usamif.com"
+EMAIL="admin@usamif.com"   # set to a real contact before running
 
 echo "Setting up SSL for $DOMAIN..."
 
@@ -13,11 +13,12 @@ echo "Setting up SSL for $DOMAIN..."
 apt-get install -y certbot python3-certbot-nginx
 
 # Obtain certificate
+# Single domain only — there is no www.hub.usamif.com DNS record.
 certbot --nginx \
   --non-interactive \
   --agree-tos \
   --email $EMAIL \
-  --domains $DOMAIN,www.$DOMAIN \
+  --domains $DOMAIN \
   --redirect
 
 # Auto-renewal cron job

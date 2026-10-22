@@ -7,8 +7,13 @@ module.exports = {
     {
       name: 'usam-hub-api',
       script: 'src/server.js',
-      cwd: '/var/www/usam-hub/backend',
-      instances: 'max',
+      // Backend is nested at backend/backend in the repo; when cloned to
+      // /var/www/usam-hub the server entry lives here.
+      cwd: '/var/www/usam-hub/backend/backend',
+      // Pinned to 2 (the dedicated box has 2 vCPU / 3.7GB). Deterministic +
+      // leaves headroom for Nginx + local Redis. 'max' would resolve to 2 here
+      // anyway, but pinning avoids surprises if the box is resized.
+      instances: 2,
       exec_mode: 'cluster',
       max_memory_restart: '500M',
       watch: false,

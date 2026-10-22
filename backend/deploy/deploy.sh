@@ -10,21 +10,23 @@ echo "🚀 USAM Hub Deploying..."
 
 cd $APP_DIR
 
-# Pull latest code
-git pull origin main
+# Pull latest code (release branch)
+git pull
 
-# Backend
-cd $APP_DIR/backend
-npm install --production
+# Backend (nested at backend/backend)
+cd $APP_DIR/backend/backend
+npm ci --omit=dev
 
 # Run any new migrations
-npx sequelize-cli db:migrate
+NODE_ENV=production npx sequelize-cli db:migrate
 
-# Frontend build
-cd $APP_DIR/frontend
-npm install
-npm run build
-cp -r dist/* /var/www/html/usam-hub/
+# Frontend: prefer a CI-built dist artifact; fall back to local build only if absent.
+# (Build-in-CI avoids OOM on the 3.7GB box.)
+if [ -d "$APP_DIR/frontend/dist" ]; then
+  cp -r $APP_DIR/frontend/dist/* /var/www/html/usam-hub/
+else
+  cd $APP_DIR/frontend && npm ci && npm run build && cp -r dist/* /var/www/html/usam-hub/
+fi
 
 # PM2 zero-downtime reload
 pm2 reload usam-hub-api
